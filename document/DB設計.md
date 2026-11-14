@@ -11,7 +11,7 @@
 1. **テナント分離を最初から入れる**  
    すべての業務データに `tenantId` を含める。後から付けない。
 2. **アクセスパターンからキーを決める**  
-   「着信番号→店舗」「日付の予約一覧」「卓の空席判定」「二重予約防止」を最優先で満たす。
+   「着信先→店舗」「日付の予約一覧」「卓の空席判定」「二重予約防止」を最優先で満たす。
 3. **単一テーブル＋エンティティ種別**  
    テーブルを増やしすぎず、`PK` / `SK` の接頭辞でエンティティを分ける。FAQ・利用量・申し込み承認などを同じ規則で追加できる。
 4. **時間は15分スロットで表現する**  
@@ -28,7 +28,7 @@
 | ID | 操作 | 頻度 | キーの使い方 |
 |---|---|---|---|
 | A1 | 着信先（Connect側の番号／WebRTCの店舗識別子）から店舗を特定する | 高（電話） | GetItem：`INBOUND#<inboundId>` / `TENANT` |
-| A2 | 店舗設定（営業時間・標準利用時間・FAQ等）を取得する | 高 | `TENANT#id` / `PROFILE` |
+| A2 | 店舗設定（営業時間・標準利用時間・FAQ等）を取得する | 高 | `TENANT#id` / `PROFILE`、`HOURS#...`、`FAQ#...` |
 | A3 | 店舗の卓一覧・AI予約枠を取得する | 高 | `TENANT#id` / `TABLE#...` |
 | A4 | 指定日の予約一覧を取得する | 高（管理画面） | `TENANT#id` / `RES#DATE#yyyy-mm-dd#...` |
 | A5 | 指定卓・指定日の占有スロットを取得し空席判定する | 高（予約判定） | `TENANT#id` / `SLOT#TABLE#...#DATE#...#TIME#...` |
@@ -36,7 +36,7 @@
 | A7 | 予約1件を取得・更新する | 中 | `TENANT#id` / `RES#DATE#...#RESID#...` または予約ID用GSI |
 | A8 | 通話履歴を店舗単位・新しい順で見る | 中 | `TENANT#id` / `CALL#...` |
 | A9 | ユーザーが所属する店舗を解決する | 中（ログイン後） | `USER#id` / `MEMBERSHIP#tenantId` |
-| A10 | 運営者が申し込み一覧を見る（完成系） | 低 | `TENANT#pending` または運営者向けSK |
+| A10 | 運営者が申し込み一覧を見る（完成系） | 低 | GSI2：`APPLICATION#pending` |
 | A11 | 月次の利用量を集計する（将来） | 低 | 通話明細を保存し、必要なら集計アイテムを追加 |
 
 ---
@@ -50,7 +50,7 @@
 | パーティションキー（PK） | `S` |
 | ソートキー（SK） | `S` |
 | 課金 | オンデマンド（初期） |
-| TTL属性 | `expiresAt`（任意。仮押さえや一時データ用） |
+| TTL属性 | `expiresAt`（任意。仮押さえや一時データの後片付け用。削除は期限から数日遅れることがある） |
 
 ### 3.2 GSI
 
@@ -117,7 +117,7 @@ SK = <ENTITY>#<自然な並びキー>
 | entityType | S | `TENANT_PROFILE` |
 | tenantId | S | 店舗ID |
 | name | S | 店舗名 |
-| status | S | `active` / `suspended` / `pending_approval` |
+| status | S | `active` / `suspended` |
 | inboundId | S | 着信先の識別子（**1店舗1つ・全店で重複不可**）。実電話は Connect 側の番号、WebRTC は店舗識別子（例：`demo-sakura`） |
 | address | S | 住所（任意） |
 | standardDurationMin | N | 標準利用時間。初期値 120 |
@@ -138,13 +138,14 @@ SK = <ENTITY>#<自然な並びキー>
 - 開発者の電話番号を `inboundId` に入れない。Connect が着信先として渡すのは Connect 側の番号で、個人の携帯番号で着信を受けることはないため、店舗を引けなくなる。
 - WebRTC 通話には着信先の電話番号がない。通話開始時に店舗識別子を属性として渡し、それを `inboundId` と照合する。
 - ブラウザから渡す属性は利用者側で書き換えられる。デモでは許容し、実運用で使う場合は署名付き（JWT）で渡す。
+- 外部転送には、発信者番号として使う Connect 側の取得済み番号が1つ必要。取得できない間は `transferPhoneNumber` を使わず、エージェント画面（CCP）へ転送する。
 - 実運用で店の代表番号を Connect へ転送している場合、`transferPhoneNumber` に同じ代表番号を入れると着信がループする。人が直接出られる別の番号にする。
 - 実際の電話番号はリポジトリに書かない（公開リポジトリのため）。シード投入時に環境変数などで渡す。
 
 **拡張余地**
 
 - `standardDurationMin` を残したまま、後から `durationRules`（ランチ／ディナー別）を追加属性で持てる。
-- `status=pending_approval` で完成系の承認フローに接続できる。
+- 完成系の承認待ちは `APPLICATION#`（5.9）で表し、承認時に `PROFILE` を作る。`PROFILE` 側に承認待ちの状態は持たない。
 - 将来どうしても複数の着信先が必要なら、対応表アイテム（5.1.1）を店舗あたり複数作れば足りる（今は不要）。
 
 ### 5.1.1 着信先→店舗の対応表
@@ -175,6 +176,8 @@ SK = <ENTITY>#<自然な並びキー>
 | lastStartTime | S | 任意。未設定なら close − standardDuration で算出 |
 
 曜日追加や祝日例外は `HOURS#...` を増やすだけでよい。
+
+初期版は `openTime < closeTime`（同じ日の中で完結する営業時間）だけを扱う。日付をまたぐ営業に対応するときは、占有スロットを実際の暦日・時刻で作れば `SLOT#` のキーは変えずに済む。
 
 ### 5.3 FAQ
 
@@ -238,7 +241,7 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 `PK = TENANT#...` かつ `SK begins_with RES#DATE#2026-11-14`  
 で取得する。
 
-キャンセル追加時はレコード削除ではなく `status=cancelled` にし、対応する `SLOT#` を削除（または解放）する。
+キャンセル追加時は予約本体を削除せず `status=cancelled` にし、対応する `SLOT#` を削除する。
 
 ### 5.6 占有スロット（二重予約防止の核）
 
@@ -255,7 +258,7 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 | slotStart | S | `19:00` |
 | reservationId | S | 紐づく予約 |
 | status | S | `held`（仮押さえ） / `confirmed` |
-| expiresAt | N | 仮押さえTTL（epoch秒）。本確定後は削除または無期限 |
+| expiresAt | N | 仮押さえの期限（epoch秒）。`confirmed` には付けない |
 
 **例：19:00開始・120分・刻み15分**
 
@@ -273,12 +276,12 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 | 属性 | 型 | 説明 |
 |---|---|---|
 | PK | S | `TENANT#<tenantId>` |
-| SK | S | `CALL#START#<ISO8601>#CALLID#<callId>` |
+| SK | S | `CALL#START#<ISO8601（UTC）>#CALLID#<callId>` |
 | entityType | S | `CALL` |
 | callId | S | |
 | channel | S | `webrtc` / `pstn` |
 | direction | S | `inbound` / `outbound` |
-| callerNumber | S | **かけてきた側の番号**（取得できない WebRTC デモ等は空または `unknown`） |
+| callerNumber | S | **かけてきた側の番号**。WebRTC の通話では取得できないため、その場合は属性を付けない |
 | calledNumber | S | **着信先**（店舗の `inboundId`。実電話は Connect 側の番号、WebRTC は店舗識別子） |
 | startedAt / endedAt | S | |
 | durationSec | N | |
@@ -294,7 +297,7 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 
 **番号の保存方針**
 
-- 通話ごとに `callerNumber`（発信者）と `calledNumber`（店舗側着信先）を必ずフィールドとして持つ。
+- 通話ごとに `calledNumber`（店舗側着信先）を必ず持つ。`callerNumber`（発信者）は実電話の通話で必ず保存し、WebRTC の通話では付けない。
 - 予約に残す顧客電話は別途 `RES.customerPhone`（聞き取った番号）。`callerNumber` と一致しない場合もある。
 - 利用量は通話1件に埋め込み、後から `USAGE#DAY#yyyy-mm-dd` 集計アイテムを追加しても壊れない。
 
@@ -305,19 +308,19 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 | PK | S | `USER#<userId>` |
 | SK | S | `MEMBERSHIP#<tenantId>` |
 | entityType | S | `MEMBERSHIP` |
-| role | S | `tenant_admin` / `tenant_staff` / `operator` |
+| role | S | `tenant_admin` / `tenant_staff` |
 | tenantId | S | |
 | userId | S | Cognito sub 等 |
 | status | S | `active` / `invited` / `disabled` |
 
-運営者（operator）は複数テナント参照や申し込み承認に使う。
+運営者（複数テナントの参照や申し込み承認を行う）は特定の店舗に所属しないため、`MEMBERSHIP` では表さない。Cognito のグループ（例：`operators`）で判定する。
 
 ### 5.9 店舗セルフ申し込み（完成系）
 
 | 属性 | 型 | 説明 |
 |---|---|---|
 | PK | S | `APP` |
-| SK | S | `APPLICATION#STATUS#pending#AT#<ISO8601>#ID#<applicationId>` |
+| SK | S | `APPLICATION#<applicationId>` |
 | entityType | S | `TENANT_APPLICATION` |
 | applicationId | S | |
 | status | S | `pending` / `approved` / `rejected` |
@@ -330,7 +333,9 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 | reviewedAt | S | |
 | tenantId | S | 承認後に発行した店舗ID |
 | GSI2PK | S | `APPLICATION#<status>` |
-| GSI2SK | S | `<ISO8601>#<applicationId>` |
+| GSI2SK | S | `<ISO8601（UTC）>#<applicationId>` |
+
+状態は SK に入れない。キーは作成後に書き換えられず、承認のたびに削除と再作成が必要になるため。状態別の一覧は GSI2 で引き、承認・却下は `status` と `GSI2PK` の更新だけで済ませる。
 
 **流れ**
 
@@ -348,11 +353,12 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 ### 6.1 判定手順（読み取り）
 
 1. `PROFILE` から `standardDurationMin` / `reservationSlotMin` を取得  
-2. 人数から卓種別（capacity）を決定  
-3. `TABLE#` を取得し `aiBookable=true` かつ `capacity` 一致の卓に絞る  
-4. 希望開始〜終了を15分スロット列に展開  
-5. 各候補卓について、必要スロットの `SLOT#...` が存在しないことを確認  
-6. 空いている卓を1つ選ぶ  
+2. 希望日の `HOURS#<dow>` を取得し、定休日でないこと、開始時刻が刻みに合っていること、営業開始以降かつ最終受付時刻以前であることを確認（満たさなければ受付不可）  
+3. 人数から卓種別（capacity）を決定（7人以上は人間対応）  
+4. `TABLE#` を取得し `aiBookable=true` かつ `active=true` かつ `capacity` 一致の卓に絞る  
+5. 希望開始〜終了を15分スロット列に展開  
+6. 各候補卓について、必要スロットの `SLOT#...` が存在しないことを確認  
+7. 空いている卓を1つ選ぶ  
 
 ### 6.2 確定手順（書き込み）
 
@@ -364,20 +370,25 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 
 どれか1つでも衝突したらトランザクション全体失敗 → 別卓再試行または満席。
 
+120分・15分刻みなら予約本体1件＋スロット8件の計9件で、1トランザクションの上限（100件）に収まる。
+
 ### 6.3 仮押さえ（任意・将来）
 
 会話中に短時間だけ席を押さえる場合：
 
-- `SLOT` を `status=held` + `expiresAt`（例：3分）で作成  
-- 確定時に `held → confirmed` へ条件付き更新  
-- TTLで期限切れ自動削除  
+- `SLOT` を `status=held` + `expiresAt`（例：3分後）で作成  
+- 確定時に `held → confirmed` へ条件付き更新し、`expiresAt` を外す  
+- 期限の判定を TTL に頼らない。TTL による削除は期限から数日遅れることがあり、その間も期限切れのアイテムは読み書きに現れる  
+  - 空席判定では、`expiresAt` が現在時刻より前の `held` を空きとして扱う  
+  - 作成時の条件は「アイテムが無い、または期限切れの `held`」にする（`attribute_not_exists(PK) OR (#status = :held AND expiresAt < :now)`）  
+  - TTL は残ったアイテムの後片付けとして使う  
 
 MVPでは仮押さえなしの「確認→即確定トランザクション」でもよい。
 
 ### 6.4 キャンセル（後回し機能の入れ方）
 
 1. 予約 `status` を `cancelled` に更新  
-2. 紐づく `SLOT#` を削除（または `status=free` ではなく削除推奨）  
+2. 紐づく `SLOT#` を削除する（`status=free` などで残さない。残すと `attribute_not_exists` の条件に当たり、再予約できなくなる）  
 3. 同じ卓・時間帯が再度予約可能になる  
 
 変更は「旧スロット削除＋新スロット作成＋予約更新」を1トランザクションで行う。
@@ -442,10 +453,9 @@ status: confirmed
 
 ```
 PK: TENANT#t_demo_001
-SK: CALL#START#2026-11-14T10:00:00+09:00#CALLID#contact-xxx
-callerNumber: +8190yyyyyyyy
+SK: CALL#START#2026-11-14T01:00:00Z#CALLID#contact-xxx
 calledNumber: demo-sakura
-channel: webrtc
+channel: webrtc                     # WebRTC のため callerNumber は無し（実電話なら +81... が入る）
 transferred: false
 result: reserved
 reservationId: 01JB...
@@ -458,7 +468,7 @@ reservationId: 01JB...
 - APIは認証ユーザーの `MEMBERSHIP` から許可された `tenantId` だけを使う。  
 - リクエストボディの `tenantId` を信じない。  
 - 電話経路は着信先 → 対応表（`INBOUND#<inboundId>`）で解決した `tenantId` のみ使う。  
-- `operator` 以外は他テナントの PK に触れない。
+- 運営者グループ以外は他テナントの PK に触れない。
 
 ---
 
@@ -483,23 +493,25 @@ reservationId: 01JB...
 必須：
 
 1. `PROFILE`（`inboundId` と `transferPhoneNumber`）＋着信先の対応表 `INBOUND#`  
-2. `TABLE#`  
-3. `RES#`  
-4. `SLOT#`  
-5. 予約確定の `TransactWriteItems`  
+2. `HOURS#`（営業時間・最終受付の判定に必要。シードで投入）  
+3. `TABLE#`  
+4. `RES#`  
+5. `SLOT#`  
+6. 予約確定の `TransactWriteItems`  
 
 電話接続時に追加：
 
-6. `CALL#`（`callerNumber` / `calledNumber` を含む）  
+7. `FAQ#`（店舗情報の質問に答えるために必要。シードで投入）  
+8. `CALL#`（`callerNumber` / `calledNumber` を含む）  
 
 管理画面時に追加：
 
-7. `MEMBERSHIP#`  
-8. `HOURS#` / `FAQ#`（設定画面用）  
+9. `MEMBERSHIP#`  
+10. `HOURS#` / `FAQ#` の編集（設定画面）  
 
 完成系で追加：
 
-9. `APPLICATION#`（申し込み）＋運営者承認フロー  
+11. `APPLICATION#`（申し込み）＋運営者承認フロー  
 
 ---
 
@@ -507,13 +519,14 @@ reservationId: 01JB...
 
 | 対象 | 規則 |
 |---|---|
-| tenantId | `t_` + ULID/短号 |
+| tenantId | `t_` + ULID または短いID |
 | tableId | `T{capacity}-{連番}` 例：`T4-01` |
 | reservationId | ULID |
 | callId | Connect の ContactId を優先。なければ ULID |
 | 時刻キー | `HHmm`（`1900`）。表示は `19:00` |
 | 日付キー | `yyyy-mm-dd`（店舗タイムゾーン） |
-| 電話キー | 可能なら E.164。デモは `demo-sakura` のような安定ID |
+| キーに入れる日時 | UTC の ISO8601（例：`2026-11-14T01:00:00Z`）。オフセットが混ざると並び順が崩れる |
+| inboundId | 実電話は E.164（Connect 側の番号）。WebRTC は `demo-sakura` のような固定ID |
 
 ---
 
@@ -522,7 +535,7 @@ reservationId: 01JB...
 1. **なぜ単一テーブルか**：店舗単位のクエリが1パーティションで完結し、エンティティ追加がSK接頭辞で済む。  
 2. **なぜSLOTを別アイテムにするか**：DynamoDBは範囲の排他をSQLのように書けないため、15分コマの存在有無で競合を条件付き書き込みに落とす。  
 3. **なぜtenantIdをキーに含めるか**：誤って他店データを読まない／書かない設計を強制できる。  
-4. **なぜ最初から拡張属性を壊さないか**：利用時間ルール・キャンセル・承認を「新エンティティ／新属性」で足せるようにしてある。
+4. **なぜ後から機能を足してもキー設計が壊れないか**：利用時間ルール・キャンセル・承認を「新エンティティ／新属性」で足せるようにしてある。
 
 ---
 
