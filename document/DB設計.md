@@ -27,9 +27,8 @@
 
 | ID | 操作 | 頻度 | キーの使い方 |
 |---|---|---|---|
-| A1 | 着信先番号／デモ識別子から店舗を特定する | 高（電話） | GSI1：`PHONE#...` → `INBOUND#` → tenant |
+| A1 | 着信先番号／デモ識別子から店舗を特定する | 高（電話） | GSI1：`PHONE#...` → tenant |
 | A2 | 店舗設定（営業時間・標準利用時間・FAQ等）を取得する | 高 | `TENANT#id` / `PROFILE` |
-| A2b | 店舗の着信番号一覧を取得する | 中 | `TENANT#id` / `INBOUND#PHONE#...` |
 | A3 | 店舗の卓一覧・AI予約枠を取得する | 高 | `TENANT#id` / `TABLE#...` |
 | A4 | 指定日の予約一覧を取得する | 高（管理画面） | `TENANT#id` / `RES#DATE#yyyy-mm-dd#...` |
 | A5 | 指定卓・指定日の占有スロットを取得し空席判定する | 高（予約判定） | `TENANT#id` / `SLOT#TABLE#...#DATE#...#TIME#...` |
@@ -92,7 +91,6 @@ SK = <ENTITY>#<自然な並びキー>
 | 接頭辞 | 意味 |
 |---|---|
 | `PROFILE` | 店舗プロフィール・設定 |
-| `INBOUND#` | 店舗の着信番号（1店舗あたり複数可） |
 | `HOURS` | 営業時間（曜日別などに分割可能） |
 | `FAQ#` | FAQ項目 |
 | `TABLE#` | 卓マスタ |
@@ -118,49 +116,28 @@ SK = <ENTITY>#<自然な並びキー>
 | tenantId | S | 店舗ID |
 | name | S | 店舗名 |
 | status | S | `active` / `suspended` / `pending_approval` |
+| phoneNumber | S | 店舗の着信番号（**1店舗1つ**）。デモ店には開発者の番号またはデモIDを入れる |
 | address | S | 住所（任意） |
 | standardDurationMin | N | 標準利用時間。初期値 120 |
 | reservationSlotMin | N | 開始刻み。初期値 15 |
-| transferPhoneNumber | S | 人間引き継ぎの外部転送先。デモでは開発者の電話番号を各店に設定してよい |
+| transferPhoneNumber | S | 人間引き継ぎの外部転送先。デモでは開発者の電話番号でよい（`phoneNumber` と同じでも可） |
 | timezone | S | 例：`Asia/Tokyo` |
 | createdAt / updatedAt | S | ISO8601 |
+| GSI1PK | S | `PHONE#<phoneNumber>` |
+| GSI1SK | S | `TENANT` |
 
 **電話番号の持ち方**
 
-- 店舗の着信番号は PROFILE に1つだけ持たない。**`INBOUND#` を店舗ごとに複数保存**する（下記 5.1.1）。
-- 実番号・デモ識別子・旧番号・サブ回線など、その店が現在使う番号をすべて登録できる。
-- 人間引き継ぎ用の転送先は `transferPhoneNumber`。デモ期間は全店を同じ開発者番号にしてもよい。
+- 店舗の着信番号は **1つだけ**（`phoneNumber`）。複数回線は初期版で持たない。
+- デモ用店舗には、ここに開発者の番号（またはデモ用識別子）を入れる。
+- 着信解決は GSI1（`PHONE#...` → 店舗）で行う。
+- 転送先は `transferPhoneNumber`。デモでは自分の番号を入れて外部転送する。
 
 **拡張余地**
 
 - `standardDurationMin` を残したまま、後から `durationRules`（ランチ／ディナー別）を追加属性で持てる。
 - `status=pending_approval` で完成系の承認フローに接続できる。
-
-### 5.1.1 店舗着信番号（複数）
-
-1店舗が持つ着信番号・デモ識別子を、番号ごとに1アイテムで保存する。全店・各店で現在の番号をすべて持てる。
-
-| 属性 | 型 | 説明 |
-|---|---|---|
-| PK | S | `TENANT#<tenantId>` |
-| SK | S | `INBOUND#PHONE#<normalizedPhoneOrDemoId>` |
-| entityType | S | `INBOUND_PHONE` |
-| tenantId | S | |
-| phoneNumber | S | E.164 またはデモID（例：`demo-sakura`） |
-| label | S | 任意。例：本店回線 / Connect番号 / WebRTCデモ |
-| kind | S | `pstn` / `connect` / `demo` / `other` |
-| isPrimary | BOOL | 代表番号か（表示用。着信解決には全件使う） |
-| enabled | BOOL | false なら着信解決から除外 |
-| createdAt / updatedAt | S | |
-| GSI1PK | S | `PHONE#<phoneNumber>` |
-| GSI1SK | S | `TENANT#<tenantId>` |
-
-**ルール**
-
-- 着信時は `calledNumber` で GSI1 を引き、`enabled=true` の `INBOUND#` から `tenantId` を決める。
-- 同じ番号を複数店舗に紐づけない（GSI1 上で一意にする）。
-- 番号追加・廃止は `INBOUND#` の追加／`enabled=false` で行い、PROFILE を壊さない。
-- 店舗の番号一覧は `PK=TENANT#...` かつ `SK begins_with INBOUND#PHONE#` で取得する。
+- 将来どうしても複数着信番号が必要なら、そのとき別エンティティを足す（今は不要）。
 
 ### 5.2 営業時間
 
@@ -279,7 +256,7 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 | channel | S | `webrtc` / `pstn` |
 | direction | S | `inbound` / `outbound` |
 | callerNumber | S | **かけてきた側の番号**（取得できない WebRTC デモ等は空または `unknown`） |
-| calledNumber | S | **着信先**（店舗の `INBOUND#` に登録した番号／デモID） |
+| calledNumber | S | **着信先**（店舗の `phoneNumber`） |
 | startedAt / endedAt | S | |
 | durationSec | N | |
 | transferred | BOOL | 外部転送したか |
@@ -392,32 +369,13 @@ MVPでは仮押さえなしの「確認→即確定トランザクション」�
 PK: TENANT#t_demo_001
 SK: PROFILE
 name: デモ食堂さくら
+phoneNumber: +8190xxxxxxxx          # デモ店：開発者の番号（1店1つ）
 standardDurationMin: 120
 reservationSlotMin: 15
-transferPhoneNumber: +8190xxxxxxxx   # デモ：開発者の電話（各店に設定可）
+transferPhoneNumber: +8190xxxxxxxx  # デモ：同じ番号へ外部転送でよい
 status: active
-```
-
-### 店舗着信番号（複数例）
-
-```
-PK: TENANT#t_demo_001
-SK: INBOUND#PHONE#demo-sakura
-phoneNumber: demo-sakura
-kind: demo
-isPrimary: true
-enabled: true
-GSI1PK: PHONE#demo-sakura
-GSI1SK: TENANT#t_demo_001
-
-PK: TENANT#t_demo_001
-SK: INBOUND#PHONE#+81312345678
-phoneNumber: +81312345678
-kind: pstn
-isPrimary: false
-enabled: true
-GSI1PK: PHONE#+81312345678
-GSI1SK: TENANT#t_demo_001
+GSI1PK: PHONE#+8190xxxxxxxx
+GSI1SK: TENANT
 ```
 
 ### 卓
@@ -457,7 +415,7 @@ status: confirmed
 PK: TENANT#t_demo_001
 SK: CALL#START#2026-11-14T10:00:00+09:00#CALLID#contact-xxx
 callerNumber: +8190yyyyyyyy
-calledNumber: demo-sakura
+calledNumber: +8190xxxxxxxx
 channel: webrtc
 transferred: false
 result: reserved
@@ -470,7 +428,7 @@ reservationId: 01JB...
 
 - APIは認証ユーザーの `MEMBERSHIP` から許可された `tenantId` だけを使う。  
 - リクエストボディの `tenantId` を信じない。  
-- 電話経路は着信先 `calledNumber` → GSI1（`INBOUND#`）で解決した `tenantId` のみ使う。  
+- 電話経路は着信先 `calledNumber` → GSI1（`PROFILE.phoneNumber`）で解決した `tenantId` のみ使う。  
 - `operator` 以外は他テナントの PK に触れない。
 
 ---
@@ -486,8 +444,7 @@ reservationId: 01JB...
 | 通話要約・文字起こし | CALLに参照追加、実体はS3 | DBテーブル追加必須ではない |
 | 利用量の月次請求 | CALL明細→日次/月次 `USAGE#` 集計アイテム | 初期明細設計のやり直し |
 | 店舗セルフ申し込み＋承認 | `APPLICATION#` と承認時の PROFILE 作成 | 初期デモ登録の廃止は不要（併用可） |
-| 実電話番号追加 | `INBOUND#` を追加し GSI1 を付ける。旧番号は `enabled=false` | 予約・SLOT設計の変更 |
-| 店舗の番号を複数運用 | 店ごとに `INBOUND#` を必要なだけ保存 | PROFILE の单一フィールド化 |
+| 実電話番号／デモ番号の差し替え | `PROFILE.phoneNumber` と GSI1 を更新 | 予約・SLOT設計の変更 |
 | FAQ増強／カテゴリ | FAQアイテム追加、tags拡張 | 新テーブル必須ではない |
 
 ---
@@ -496,25 +453,24 @@ reservationId: 01JB...
 
 必須：
 
-1. `PROFILE`  
-2. `INBOUND#`（店舗着信番号。複数可。GSI1）  
-3. `TABLE#`  
-4. `RES#`  
-5. `SLOT#`  
-6. 予約確定の `TransactWriteItems`  
+1. `PROFILE`（`phoneNumber` 1つ＋GSI1）  
+2. `TABLE#`  
+3. `RES#`  
+4. `SLOT#`  
+5. 予約確定の `TransactWriteItems`  
 
 電話接続時に追加：
 
-7. `CALL#`（`callerNumber` / `calledNumber` を含む）  
+6. `CALL#`（`callerNumber` / `calledNumber` を含む）  
 
 管理画面時に追加：
 
-8. `MEMBERSHIP#`  
-9. `HOURS#` / `FAQ#`（設定画面用）  
+7. `MEMBERSHIP#`  
+8. `HOURS#` / `FAQ#`（設定画面用）  
 
 完成系で追加：
 
-10. `APPLICATION#`（申し込み）＋運営者承認フロー  
+9. `APPLICATION#`（申し込み）＋運営者承認フロー  
 
 ---
 
