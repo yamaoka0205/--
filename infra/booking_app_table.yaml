@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: BookingApp DynamoDB table (single-table design for AI phone reservation SaaS)
+
+Parameters:
+  TableName:
+    Type: String
+    Default: BookingApp
+    Description: DynamoDB table name
+
+Resources:
+  BookingAppTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref TableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: Project
+          Value: aidenwa-yoyaku
+        - Key: Purpose
+          Value: reservation-booking
+
+Outputs:
+  TableName:
+    Description: Created DynamoDB table name
+    Value: !Ref BookingAppTable
+  TableArn:
+    Description: Created DynamoDB table ARN
+    Value: !GetAtt BookingAppTable.Arn

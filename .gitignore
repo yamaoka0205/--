@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# Local DynamoDB
+.dynamodb-local/
+*.db
+*.log
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# AWS / secrets
+*.pem
+credentials
+.aws/
