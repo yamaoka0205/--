@@ -40,3 +40,18 @@ aws cloudformation deploy \
 ```
 
 東京リージョンに `BookingApp` を作成済み（IAM ユーザー `cursor`）。再実行は冪等で、既存テーブルはそのまま使う。
+
+## デモ店のシード
+
+```bash
+python3 scripts/seed_demo_store.py
+
+# 転送先番号を入れる場合（リポジトリには書かない）
+TRANSFER_PHONE_NUMBER=+81... python3 scripts/seed_demo_store.py
+```
+
+投入内容（`t_demo_001` / `demo-sakura`）：
+
+- `PROFILE` + `INBOUND#`
+- `HOURS#`（月〜土 11:00-22:00、日定休、最終開始 20:00）
+- `TABLE#`（AI予約: 4人用4卓 + 6人用2卓、当日客用: 4人用2卓）
