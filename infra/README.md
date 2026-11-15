@@ -77,19 +77,32 @@ PYTHONPATH=src python3 scripts/invoke_confirm_reservation.py \
 
 ## API Gateway + Lambda へ公開
 
-デプロイする IAM ユーザー（`cursor`）に、少なくとも次が必要。
+現状 `cursor` は DynamoDB のみ。公開デプロイには追加権限が必要。
 
-- `AmazonDynamoDBFullAccess`（既存）
+### 1. IAM に権限を付ける（コンソール・管理者）
+
+IAM → ユーザー `cursor` → 許可を追加。どちらか一方でよい。
+
+**手早い（マネージド）**
+
 - `AWSLambda_FullAccess`
 - `AmazonAPIGatewayAdministrator`
-- `AWSCloudFormationFullAccess`（使わないが将来用。現状のデプロイ脚本は boto3 直）
-- Lambda 実行ロール作成のため `IAM` で Role / インラインポリシーを作れる権限（開発中は `IAMFullAccess` でも可。後で絞る）
+- `IAMFullAccess`（開発中のみ。あとで外す）
+
+**絞る場合（推奨）**
+
+インラインポリシーに `infra/cursor_deployer_policy.json` の内容を貼る。  
+（`BookingAppLambdaRole` の作成・PassRole、Lambda、HTTP API、Logs だけ）
+
+付けたらエージェント側で再実行する。
+
+### 2. デプロイ
 
 ```bash
 python3 scripts/deploy_api.py
 ```
 
-公開されるエンドポイント（例）:
+公開エンドポイント:
 
 - `POST {baseUrl}/availability/check`
 - `POST {baseUrl}/reservations/confirm`
