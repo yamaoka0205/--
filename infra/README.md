@@ -55,3 +55,12 @@ TRANSFER_PHONE_NUMBER=+81... python3 scripts/seed_demo_store.py
 - `PROFILE` + `INBOUND#`
 - `HOURS#`（月〜土 11:00-22:00、日定休、最終開始 20:00）
 - `TABLE#`（AI予約: 4人用4卓 + 6人用2卓、当日客用: 4人用2卓）
+
+## 空席確認API（ローカルから Lambda ハンドラを直叩き）
+
+```bash
+PYTHONPATH=src python3 scripts/invoke_check_availability.py \
+  --tenant-id t_demo_001 --date 2026-11-16 --start-time 19:00 --party-size 4
+```
+
+返却例: `available` / `full` / `closed` / `outside_hours` / `invalid_slot` / `human_handoff`
