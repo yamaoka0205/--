@@ -26,6 +26,8 @@ python3 scripts/create_table.py --endpoint-url http://localhost:8000
 
 ## AWS で作る
 
+前提: 環境に `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_DEFAULT_REGION` が入っていること（値はリポジトリに書かない）。
+
 ```bash
 # boto3 + 認証情報がある場合
 python3 scripts/create_table.py --region ap-northeast-1
@@ -36,3 +38,5 @@ aws cloudformation deploy \
   --stack-name booking-app-table \
   --region ap-northeast-1
 ```
+
+東京リージョンに `BookingApp` を作成済み（IAM ユーザー `cursor`）。再実行は冪等で、既存テーブルはそのまま使う。
