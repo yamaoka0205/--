@@ -136,7 +136,11 @@ SK = <ENTITY>#<自然な並びキー>
 | `transferPhoneNumber` | AIが対応できないとき人につなぐ | 開発者の電話番号 | 可（全デモ店で同じでよい） |
 
 - 開発者の電話番号を `inboundId` に入れない。Connect が着信先として渡すのは Connect 側の番号で、個人の携帯番号で着信を受けることはないため、店舗を引けなくなる。
-- **番号は「あれば使う、無ければデモ用の固定値」**。店舗特定の Lambda（`resolve_store`）の先頭で決める。
+- 着信は **普通の電話／非通知／WebRTC** の3種類。店舗特定の Lambda（`resolve_store`）が `callType` として判定する。
+  - 非通知：Connect は客の番号を文字列 `anonymous` で渡す。着信先は本物なので店舗特定はできる。かけてきた番号は空にして保存しない（固定値で埋めない）。
+  - WebRTC：`InitiationMethod=WEBRTC_API` または `connect:Subtype=connect:WebRTC` で判定する。番号が無いので下記の固定値で埋める。
+  - 普通の電話・非通知で着信先が取れないときは、デモ店に落とさず店舗不明にする。
+- **WebRTC の番号は「あれば使う、無ければデモ用の固定値」**。
   - 着信先：`SystemEndpoint` があればそれ。無ければ（WebRTC）`DEMO_INBOUND_NUMBER`（既定 `+810000000001`）
   - かけてきた番号：`CustomerEndpoint` があればそれ。無ければ `DEMO_CALLER_NUMBER`（既定 `+810000000000`）
   - 固定値は `+81` の直後が `0` で、日本の番号として存在しえない。実在する人や会社の番号に当たらない。
@@ -284,8 +288,9 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 | entityType | S | `CALL` |
 | callId | S | |
 | channel | S | `webrtc` / `pstn` |
+| callerIdWithheld | BOOL | 非通知だったか（`pstn` のみ） |
 | direction | S | `inbound` / `outbound` |
-| callerNumber | S | **かけてきた側の番号**。WebRTC ではデモ用の固定値になるため保存しない（属性を付けない） |
+| callerNumber | S | **かけてきた側の番号**。普通の電話のみ保存する。非通知・WebRTC は属性を付けない |
 | calledNumber | S | **着信先**（店舗の `inboundId`。実電話は Connect 側の番号、WebRTC はデモ用の固定番号） |
 | startedAt / endedAt | S | |
 | durationSec | N | |

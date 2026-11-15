@@ -24,3 +24,6 @@ build/
 *.pem
 credentials
 .aws/
+
+# Test cache
+.pytest_cache/
