@@ -75,40 +75,36 @@ PYTHONPATH=src python3 scripts/invoke_confirm_reservation.py \
 
 成功時は `RES#` と占有 `SLOT#` を `TransactWriteItems` で同時作成する。衝突時は別卓を試し、なければ `full`（HTTP 409）。
 
-## API Gateway + Lambda へ公開
+## Lambda へ公開（Function URL / API Gateway）
 
-現状 `cursor` は DynamoDB のみ。公開デプロイには追加権限が必要。
+`scripts/deploy_api.py` は Lambda 2 本を上げ、**Lambda Function URL** で HTTPS 公開する。  
+API Gateway 権限があれば HTTP API も作る（無くても Function URL だけで動く）。
 
-### 1. IAM に権限を付ける（コンソール・管理者）
+### 1. IAM（コンソール・管理者）
 
-IAM → ユーザー `cursor` → 許可を追加。どちらか一方でよい。
+IAM → ユーザー `cursor` → 許可を追加。
 
-**手早い（マネージド）**
+最低限（Function URL 公開）:
 
 - `AWSLambda_FullAccess`
+- 実行ロール作成用: `IAMFullAccess`（仮）または `infra/cursor_deployer_policy.json`
+
+任意（共通パスの API Gateway）:
+
 - `AmazonAPIGatewayAdministrator`
-- `IAMFullAccess`（開発中のみ。あとで外す）
-
-**絞る場合（推奨）**
-
-インラインポリシーに `infra/cursor_deployer_policy.json` の内容を貼る。  
-（`BookingAppLambdaRole` の作成・PassRole、Lambda、HTTP API、Logs だけ）
-
-付けたらエージェント側で再実行する。
 
 ### 2. デプロイ
 
 ```bash
 python3 scripts/deploy_api.py
+# → build/api_endpoints.json に URL が書かれる
 ```
 
-公開エンドポイント:
-
-- `POST {baseUrl}/availability/check`
-- `POST {baseUrl}/reservations/confirm`
-
 ```bash
-curl -sS -X POST "$BASE_URL/availability/check" \
+CHECK=$(python3 -c 'import json;print(json.load(open("build/api_endpoints.json"))["checkAvailability"])')
+curl -sS -X POST "$CHECK" \
   -H 'content-type: application/json' \
   -d '{"tenantId":"t_demo_001","date":"2026-11-16","startTime":"19:00","partySize":4}'
 ```
+
+実AWSでは Function URL で空席確認・予約確定を確認済み。
