@@ -10,7 +10,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 
-def _resource():
+def _aws_kwargs() -> dict[str, Any]:
     kwargs: dict[str, Any] = {}
     region = os.environ.get("AWS_DEFAULT_REGION") or os.environ.get("AWS_REGION")
     if region:
@@ -22,13 +22,30 @@ def _resource():
         kwargs["aws_secret_access_key"] = os.environ.get(
             "AWS_SECRET_ACCESS_KEY", "local"
         )
-    return boto3.resource("dynamodb", **kwargs)
+    return kwargs
+
+
+def _resource():
+    return boto3.resource("dynamodb", **_aws_kwargs())
+
+
+def _client():
+    # Low-level client for TransactWriteItems (avoid resource re-serialization).
+    return boto3.client("dynamodb", **_aws_kwargs())
+
+
+def to_attr_map(item: dict) -> dict:
+    from boto3.dynamodb.types import TypeSerializer
+
+    serializer = TypeSerializer()
+    return {k: serializer.serialize(v) for k, v in item.items()}
 
 
 class BookingStore:
     def __init__(self, table_name: str | None = None):
         self.table_name = table_name or os.environ.get("BOOKING_TABLE_NAME", "BookingApp")
         self.table = _resource().Table(self.table_name)
+        self.client = _client()
 
     def get_profile(self, tenant_id: str) -> dict | None:
         return self.table.get_item(

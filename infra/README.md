@@ -64,3 +64,13 @@ PYTHONPATH=src python3 scripts/invoke_check_availability.py \
 ```
 
 返却例: `available` / `full` / `closed` / `outside_hours` / `invalid_slot` / `human_handoff`
+
+## 予約確定API
+
+```bash
+PYTHONPATH=src python3 scripts/invoke_confirm_reservation.py \
+  --tenant-id t_demo_001 --date 2026-11-18 --start-time 19:00 --party-size 4 \
+  --customer-name '山田太郎'
+```
+
+成功時は `RES#` と占有 `SLOT#` を `TransactWriteItems` で同時作成する。衝突時は別卓を試し、なければ `full`（HTTP 409）。
