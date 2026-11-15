@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Deploy Booking API to AWS Lambda + API Gateway HTTP API.
+"""Deploy Booking API to AWS Lambda (Function URL; API Gateway if permitted).
 
-Requires IAM permissions beyond DynamoDB (Lambda, API Gateway, IAM role, logs).
+Requires IAM beyond DynamoDB: Lambda, IAM role create/pass, logs.
+API Gateway is optional — if denied, public Function URLs are used instead.
 
 Usage:
   python3 scripts/deploy_api.py
@@ -27,10 +28,12 @@ FUNCTIONS = {
     "BookingAppCheckAvailability": {
         "handler": "handlers.check_availability.handler",
         "route": "POST /availability/check",
+        "key": "checkAvailability",
     },
     "BookingAppConfirmReservation": {
         "handler": "handlers.confirm_reservation.handler",
         "route": "POST /reservations/confirm",
+        "key": "confirmReservation",
     },
 }
 
@@ -73,14 +76,11 @@ def ensure_role(iam, account: str, reg: str) -> str:
             raise
         print(f"Role exists {ROLE_NAME}")
 
-    try:
-        iam.put_role_policy(
-            RoleName=ROLE_NAME,
-            PolicyName=POLICY_NAME,
-            PolicyDocument=policy_doc,
-        )
-    except ClientError:
-        raise
+    iam.put_role_policy(
+        RoleName=ROLE_NAME,
+        PolicyName=POLICY_NAME,
+        PolicyDocument=policy_doc,
+    )
 
     # IAM role propagation can lag briefly.
     time.sleep(8)
@@ -132,6 +132,60 @@ def ensure_function(lam, name: str, handler: str, role_arn: str, zip_path: Path,
     return lam.get_function(FunctionName=name)["Configuration"]["FunctionArn"]
 
 
+def _add_permission(lam, *, function_name: str, statement_id: str, **kwargs) -> None:
+    try:
+        lam.add_permission(
+            FunctionName=function_name,
+            StatementId=statement_id,
+            **kwargs,
+        )
+        print(f"Added permission {statement_id} on {function_name}")
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] != "ResourceConflictException":
+            raise
+        print(f"Permission exists {statement_id} on {function_name}")
+
+
+def ensure_function_urls(lam) -> dict[str, str]:
+    """Public HTTPS endpoints without API Gateway."""
+    urls: dict[str, str] = {}
+    for fn_name, meta in FUNCTIONS.items():
+        try:
+            cfg = lam.create_function_url_config(
+                FunctionName=fn_name,
+                AuthType="NONE",
+                Cors={
+                    "AllowOrigins": ["*"],
+                    "AllowMethods": ["POST"],
+                    "AllowHeaders": ["content-type"],
+                },
+            )
+            print(f"Created Function URL for {fn_name}")
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] != "ResourceConflictException":
+                raise
+            cfg = lam.get_function_url_config(FunctionName=fn_name)
+            print(f"Function URL exists for {fn_name}")
+
+        _add_permission(
+            lam,
+            function_name=fn_name,
+            statement_id="FunctionURLAllowPublicAccess",
+            Action="lambda:InvokeFunctionUrl",
+            Principal="*",
+            FunctionUrlAuthType="NONE",
+        )
+        _add_permission(
+            lam,
+            function_name=fn_name,
+            statement_id="FunctionURLAllowPublicInvoke",
+            Action="lambda:InvokeFunction",
+            Principal="*",
+        )
+        urls[meta["key"]] = cfg["FunctionUrl"].rstrip("/")
+    return urls
+
+
 def ensure_http_api(apigw, lam, account: str, reg: str) -> str:
     apis = apigw.get_apis().get("Items", [])
     api_id = None
@@ -153,7 +207,6 @@ def ensure_http_api(apigw, lam, account: str, reg: str) -> str:
     else:
         print(f"HTTP API exists {api_id}")
 
-    # Stage
     try:
         apigw.create_stage(ApiId=api_id, StageName="prod", AutoDeploy=True)
     except ClientError as exc:
@@ -161,10 +214,8 @@ def ensure_http_api(apigw, lam, account: str, reg: str) -> str:
             "ConflictException",
             "BadRequestException",
         }:
-            # already exists is fine
             msg = exc.response["Error"].get("Message", "")
             if "already exists" not in msg.lower():
-                # try get
                 try:
                     apigw.get_stage(ApiId=api_id, StageName="prod")
                 except ClientError:
@@ -177,7 +228,6 @@ def ensure_http_api(apigw, lam, account: str, reg: str) -> str:
             f"arn:aws:lambda:{reg}:{account}:function:{fn_name}/invocations"
         )
 
-        # Find or create integration
         integrations = apigw.get_integrations(ApiId=api_id).get("Items", [])
         integration_id = None
         for integ in integrations:
@@ -194,7 +244,6 @@ def ensure_http_api(apigw, lam, account: str, reg: str) -> str:
             )["IntegrationId"]
             print(f"Created integration for {fn_name}")
 
-        # Route
         routes = apigw.get_routes(ApiId=api_id).get("Items", [])
         route_key = f"{method} {path}"
         route_id = None
@@ -217,24 +266,26 @@ def ensure_http_api(apigw, lam, account: str, reg: str) -> str:
             )
             print(f"Updated route {route_key}")
 
-        # Permission for API Gateway to invoke Lambda
         statement_id = f"apigw-{api_id}-{fn_name}".replace("_", "")[:100]
         source_arn = f"arn:aws:execute-api:{reg}:{account}:{api_id}/*/*{path}"
-        try:
-            lam.add_permission(
-                FunctionName=fn_name,
-                StatementId=statement_id,
-                Action="lambda:InvokeFunction",
-                Principal="apigateway.amazonaws.com",
-                SourceArn=source_arn,
-            )
-            print(f"Added invoke permission for {fn_name}")
-        except ClientError as exc:
-            if exc.response["Error"]["Code"] != "ResourceConflictException":
-                raise
-            print(f"Invoke permission exists for {fn_name}")
+        _add_permission(
+            lam,
+            function_name=fn_name,
+            statement_id=statement_id,
+            Action="lambda:InvokeFunction",
+            Principal="apigateway.amazonaws.com",
+            SourceArn=source_arn,
+        )
 
     return f"https://{api_id}.execute-api.{reg}.amazonaws.com/prod"
+
+
+def write_endpoints(payload: dict) -> Path:
+    out = ROOT / "build" / "api_endpoints.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, indent=2) + "\n")
+    print(f"Wrote {out}")
+    return out
 
 
 def main() -> int:
@@ -253,25 +304,41 @@ def main() -> int:
     for fn_name, meta in FUNCTIONS.items():
         ensure_function(lam, fn_name, meta["handler"], role_arn, zip_path, reg)
 
-    base_url = ensure_http_api(apigw, lam, account, reg)
-    print("OK")
-    print(f"Base URL: {base_url}")
-    print(f"  POST {base_url}/availability/check")
-    print(f"  POST {base_url}/reservations/confirm")
+    function_urls = ensure_function_urls(lam)
 
-    out = ROOT / "build" / "api_endpoints.json"
-    out.write_text(
-        json.dumps(
+    api_base = None
+    try:
+        api_base = ensure_http_api(apigw, lam, account, reg)
+    except ClientError as exc:
+        code = exc.response["Error"]["Code"]
+        if code in {"AccessDenied", "AccessDeniedException", "UnauthorizedOperation"}:
+            print(
+                "API Gateway 権限なし → Lambda Function URL で公開します。",
+                file=sys.stderr,
+            )
+        else:
+            raise
+
+    print("OK")
+    if api_base:
+        print(f"API Gateway Base URL: {api_base}")
+        print(f"  POST {api_base}/availability/check")
+        print(f"  POST {api_base}/reservations/confirm")
+        write_endpoints(
             {
-                "baseUrl": base_url,
-                "checkAvailability": f"{base_url}/availability/check",
-                "confirmReservation": f"{base_url}/reservations/confirm",
-            },
-            indent=2,
+                "mode": "api_gateway",
+                "baseUrl": api_base,
+                "checkAvailability": f"{api_base}/availability/check",
+                "confirmReservation": f"{api_base}/reservations/confirm",
+                "functionUrls": function_urls,
+            }
         )
-        + "\n"
-    )
-    print(f"Wrote {out}")
+    else:
+        print("Function URLs:")
+        for key, url in function_urls.items():
+            print(f"  {key}: {url}")
+        write_endpoints({"mode": "function_url", **function_urls})
+
     return 0
 
 
@@ -284,7 +351,9 @@ if __name__ == "__main__":
         print(f"ERROR [{code}]: {msg}", file=sys.stderr)
         if code in {"AccessDenied", "AccessDeniedException", "UnauthorizedOperation"}:
             print(
-                "IAMユーザー cursor に Lambda / API Gateway / IAM Role 作成権限を追加してください。",
+                "IAMユーザー cursor に Lambda / IAM Role 作成権限を追加してください。"
+                " API Gateway が無くても Function URL で公開できます。"
+                " 詳細は infra/cursor_deployer_policy.json / infra/README.md。",
                 file=sys.stderr,
             )
         raise SystemExit(1)

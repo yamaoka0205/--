@@ -34,7 +34,18 @@
       "Resource": "*"
     },
     {
-      "Sid": "ApiGatewayHttpApi",
+      "Sid": "LambdaFunctionUrl",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunctionUrlConfig",
+        "lambda:UpdateFunctionUrlConfig",
+        "lambda:GetFunctionUrlConfig",
+        "lambda:DeleteFunctionUrlConfig"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ApiGatewayHttpApiOptional",
       "Effect": "Allow",
       "Action": [
         "apigateway:GET",
