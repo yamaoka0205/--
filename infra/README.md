@@ -107,4 +107,4 @@ curl -sS -X POST "$CHECK" \
   -d '{"tenantId":"t_demo_001","date":"2026-11-16","startTime":"19:00","partySize":4}'
 ```
 
-実AWSでは Function URL で空席確認・予約確定を確認済み。
+実AWSでは API Gateway HTTP API（`yme1o14ql5`）と Function URL の両方で 空席確認・予約確定を確認済み。ベースURLは `build/api_endpoints.json` を参照。
