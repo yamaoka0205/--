@@ -74,3 +74,28 @@ PYTHONPATH=src python3 scripts/invoke_confirm_reservation.py \
 ```
 
 成功時は `RES#` と占有 `SLOT#` を `TransactWriteItems` で同時作成する。衝突時は別卓を試し、なければ `full`（HTTP 409）。
+
+## API Gateway + Lambda へ公開
+
+デプロイする IAM ユーザー（`cursor`）に、少なくとも次が必要。
+
+- `AmazonDynamoDBFullAccess`（既存）
+- `AWSLambda_FullAccess`
+- `AmazonAPIGatewayAdministrator`
+- `AWSCloudFormationFullAccess`（使わないが将来用。現状のデプロイ脚本は boto3 直）
+- Lambda 実行ロール作成のため `IAM` で Role / インラインポリシーを作れる権限（開発中は `IAMFullAccess` でも可。後で絞る）
+
+```bash
+python3 scripts/deploy_api.py
+```
+
+公開されるエンドポイント（例）:
+
+- `POST {baseUrl}/availability/check`
+- `POST {baseUrl}/reservations/confirm`
+
+```bash
+curl -sS -X POST "$BASE_URL/availability/check" \
+  -H 'content-type: application/json' \
+  -d '{"tenantId":"t_demo_001","date":"2026-11-16","startTime":"19:00","partySize":4}'
+```
