@@ -25,7 +25,9 @@ from botocore.exceptions import ClientError
 
 TABLE_NAME = "BookingApp"
 TENANT_ID = "t_demo_001"
-INBOUND_ID = "demo-sakura"
+# Same default as booking.inbound: WebRTC calls (no dialed number) resolve here.
+# +81 followed by 0 is not a valid Japanese number, so it cannot hit a real person.
+INBOUND_ID = os.environ.get("DEMO_INBOUND_NUMBER", "+810000000001")
 STORE_NAME = "デモ食堂さくら"
 TIMEZONE = "Asia/Tokyo"
 STANDARD_DURATION_MIN = 120
@@ -139,12 +141,67 @@ def put_profile_and_inbound(client, table_name: str, transfer_phone: str | None,
             raise
         reasons = exc.response.get("CancellationReasons", [])
         codes = [r.get("Code") for r in reasons]
-        # Both items already present → idempotent skip.
-        if codes and all(c == "ConditionalCheckFailed" for c in codes):
-            print(f"PROFILE/INBOUND already exist for {TENANT_ID}; skipping")
-            return
-        print(f"ERROR: PROFILE/INBOUND transaction canceled: {reasons}", file=sys.stderr)
-        raise
+        if not (codes and all(c in ("ConditionalCheckFailed", "None") for c in codes)):
+            print(f"ERROR: PROFILE/INBOUND transaction canceled: {reasons}", file=sys.stderr)
+            raise
+        switch_inbound_if_needed(client, table_name, now)
+
+
+def switch_inbound_if_needed(client, table_name: str, now: str) -> None:
+    """Re-point an existing demo store to INBOUND_ID (old lookup deleted atomically)."""
+    from boto3.dynamodb.types import TypeDeserializer
+
+    resp = client.get_item(
+        TableName=table_name,
+        Key=_to_attr_map({"PK": f"TENANT#{TENANT_ID}", "SK": "PROFILE"}),
+    )
+    if "Item" not in resp:
+        raise RuntimeError("INBOUND exists but PROFILE is missing; fix data manually")
+    deser = TypeDeserializer()
+    profile = {k: deser.deserialize(v) for k, v in resp["Item"].items()}
+    current = profile.get("inboundId")
+    if current == INBOUND_ID:
+        print(f"PROFILE/INBOUND already exist for {TENANT_ID}; skipping")
+        return
+
+    new_inbound = {
+        "PK": f"INBOUND#{INBOUND_ID}",
+        "SK": "TENANT",
+        "entityType": "INBOUND_LOOKUP",
+        "inboundId": INBOUND_ID,
+        "tenantId": TENANT_ID,
+        "createdAt": now,
+    }
+    items = [
+        {
+            "Put": {
+                "TableName": table_name,
+                "Item": _to_attr_map(new_inbound),
+                "ConditionExpression": "attribute_not_exists(PK)",
+            }
+        },
+        {
+            "Update": {
+                "TableName": table_name,
+                "Key": _to_attr_map({"PK": f"TENANT#{TENANT_ID}", "SK": "PROFILE"}),
+                "UpdateExpression": "SET inboundId = :new, updatedAt = :now",
+                "ExpressionAttributeValues": _to_attr_map({":new": INBOUND_ID, ":now": now}),
+            }
+        },
+    ]
+    if current:
+        items.append(
+            {
+                "Delete": {
+                    "TableName": table_name,
+                    "Key": _to_attr_map({"PK": f"INBOUND#{current}", "SK": "TENANT"}),
+                    "ConditionExpression": "tenantId = :tid",
+                    "ExpressionAttributeValues": _to_attr_map({":tid": TENANT_ID}),
+                }
+            }
+        )
+    client.transact_write_items(TransactItems=items)
+    print(f"Switched inboundId {current} -> {INBOUND_ID} for {TENANT_ID}")
 
 
 def put_hours(table, now: str) -> None:

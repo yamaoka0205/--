@@ -21,7 +21,7 @@
 <body>
   <h1>AI電話予約デモ（WebRTC）</h1>
   <div class="store">
-    <p>発信先の店舗: <strong>デモ店 さくら</strong>（<code>inboundId=demo-sakura</code>）</p>
+    <p>発信先の店舗: <strong>デモ食堂さくら</strong>（WebRTC はデモ用の着信先番号 <code>+810000000001</code> で店舗を特定）</p>
     <p>右下の電話ボタンから発信してください。マイクの許可が必要です。</p>
   </div>
 
@@ -38,8 +38,6 @@
     amazon_connect('snippetId', 'QVFJREFIaGFBVi9GbForcFl6SzlvakpJVVJmRG9OOGxuVkRRWEhGbHFPNG1XM2gvckFFRit2aUQvYW54M2hLWnMrbjF3U2FXQUFBQWJqQnNCZ2txaGtpRzl3MEJCd2FnWHpCZEFnRUFNRmdHQ1NxR1NJYjNEUUVIQVRBZUJnbGdoa2dCWlFNRUFTNHdFUVFNcG90R1daclkzaW13dEVlT0FnRVFnQ3NxMlh2VEJQZzlNcDQvZmdndWFhWGkyUUdCTGswNWk2T241V2lIQVVuZ0lXbXdseWZWejNTTjkvTWg6OnJBbjBmYnQ5bHZYdGZXaHZQNjV6N01KNWVJSGM4djNPZWltTzl0bU84VXUwTXB5aWtMRjJCSnNTZDB1QWxwbmxXbXQyN3VrVFZLckpVa3BGQ3NmUGFWUVRqNThtdFh4Rm52OU5pM2dHeGRxeUZiVGZjZkVQNjdPNWxvU21iYWF5SnM1cU5peXM3SStqWnNYMDdPbUJ0K3lXVzZvMkU5TT0=');
     amazon_connect('supportedMessagingContentTypes', [ 'text/plain', 'text/markdown', 'application/vnd.amazonaws.connect.message.interactive', 'application/vnd.amazonaws.connect.message.interactive.response' ]);
     amazon_connect('language', 'ja_JP');
-    // Client-mutable: the flow sees this as $.Attributes.HostedWidget-inboundId. Fine for the demo; use JWT for anything that must not be tampered with.
-    amazon_connect('contactAttributes', { inboundId: 'demo-sakura' });
   </script>
 </body>
 </html>

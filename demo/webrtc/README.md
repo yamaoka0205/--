@@ -1,6 +1,15 @@
 # WebRTC 電話デモ
 
-Connect の通信ウィジェット（音声）を埋め込んだページ。発信すると共通フローに入り、`inboundId=demo-sakura` で店舗を特定する。
+Connect の通信ウィジェット（音声）を埋め込んだページ。発信すると共通フローに入る。
+
+WebRTC の通話には着信先・かけてきた番号が無いので、店舗特定の Lambda（`BookingAppResolveStore`）がデモ用の固定値で埋める。
+
+| 値 | 実電話 | WebRTC（無いとき） |
+|---|---|---|
+| 着信先 | `SystemEndpoint` | `+810000000001`（デモ店に紐づけ済み） |
+| かけてきた番号 | `CustomerEndpoint` | `+810000000000`（保存しない） |
+
+固定値は `+81` の直後が `0` で、日本の番号として存在しえない。環境変数 `DEMO_INBOUND_NUMBER` / `DEMO_CALLER_NUMBER` で変えられる。
 
 ## 起動
 
@@ -15,7 +24,8 @@ python3 -m http.server 5173 --bind localhost
 
 - 通信ウィジェットの許可ドメインに `http://localhost:5173` を登録する
 - ウィジェットに紐づけるフローは全店共通フロー
-- フローでは `$.Attributes.HostedWidget-inboundId` を店舗特定の Lambda に渡す（ウィジェットが `HostedWidget-` を付ける）
+- Connect の「フロー → AWS Lambda」に `BookingAppResolveStore` を追加し、フロー先頭の「AWS Lambda 関数を呼び出す」ブロックで呼ぶ（応答の検証は STRING_MAP）
+- 返り値の `storeName` を `$.External.storeName` として「〇〇店です」の読み上げに使う。`found=false` なら店舗不明の案内へ
 
 ## 数字キー（1/2）
 

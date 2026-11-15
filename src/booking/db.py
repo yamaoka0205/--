@@ -47,6 +47,11 @@ class BookingStore:
         self.table = _resource().Table(self.table_name)
         self.client = _client()
 
+    def get_inbound(self, inbound_id: str) -> dict | None:
+        return self.table.get_item(
+            Key={"PK": f"INBOUND#{inbound_id}", "SK": "TENANT"}
+        ).get("Item")
+
     def get_profile(self, tenant_id: str) -> dict | None:
         return self.table.get_item(
             Key={"PK": f"TENANT#{tenant_id}", "SK": "PROFILE"}

@@ -50,7 +50,7 @@ python3 scripts/seed_demo_store.py
 TRANSFER_PHONE_NUMBER=+81... python3 scripts/seed_demo_store.py
 ```
 
-投入内容（`t_demo_001` / `demo-sakura`）：
+投入内容（`t_demo_001` / 着信先 `+810000000001`）。既存の店の着信先が違えば、1トランザクションで張り替える：
 
 - `PROFILE` + `INBOUND#`
 - `HOURS#`（月〜土 11:00-22:00、日定休、最終開始 20:00）

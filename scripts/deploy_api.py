@@ -36,6 +36,12 @@ FUNCTIONS = {
         "key": "confirmReservation",
     },
 }
+# Called only from the Connect flow; no public URL or API route.
+CONNECT_FUNCTIONS = {
+    "BookingAppResolveStore": {
+        "handler": "handlers.resolve_store.handler",
+    },
+}
 
 
 def region() -> str:
@@ -301,7 +307,7 @@ def main() -> int:
     zip_path = package_zip()
     role_arn = ensure_role(iam, account, reg)
 
-    for fn_name, meta in FUNCTIONS.items():
+    for fn_name, meta in {**FUNCTIONS, **CONNECT_FUNCTIONS}.items():
         ensure_function(lam, fn_name, meta["handler"], role_arn, zip_path, reg)
 
     function_urls = ensure_function_urls(lam)

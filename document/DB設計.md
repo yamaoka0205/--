@@ -27,7 +27,7 @@
 
 | ID | 操作 | 頻度 | キーの使い方 |
 |---|---|---|---|
-| A1 | 着信先（Connect側の番号／WebRTCの店舗識別子）から店舗を特定する | 高（電話） | GetItem：`INBOUND#<inboundId>` / `TENANT` |
+| A1 | 着信先（Connect側の番号。WebRTC はデモ用の固定番号）から店舗を特定する | 高（電話） | GetItem：`INBOUND#<inboundId>` / `TENANT` |
 | A2 | 店舗設定（営業時間・標準利用時間・FAQ等）を取得する | 高 | `TENANT#id` / `PROFILE`、`HOURS#...`、`FAQ#...` |
 | A3 | 店舗の卓一覧・AI予約枠を取得する | 高 | `TENANT#id` / `TABLE#...` |
 | A4 | 指定日の予約一覧を取得する | 高（管理画面） | `TENANT#id` / `RES#DATE#yyyy-mm-dd#...` |
@@ -118,7 +118,7 @@ SK = <ENTITY>#<自然な並びキー>
 | tenantId | S | 店舗ID |
 | name | S | 店舗名 |
 | status | S | `active` / `suspended` |
-| inboundId | S | 着信先の識別子（**1店舗1つ・全店で重複不可**）。実電話は Connect 側の番号、WebRTC は店舗識別子（例：`demo-sakura`） |
+| inboundId | S | 着信先の識別子（**1店舗1つ・全店で重複不可**）。実電話は Connect 側の番号。WebRTC は着信先番号が無いので、デモ用の固定番号（`+810000000001`）を使う |
 | address | S | 住所（任意） |
 | standardDurationMin | N | 標準利用時間。初期値 120 |
 | reservationSlotMin | N | 開始刻み。初期値 15 |
@@ -132,12 +132,16 @@ SK = <ENTITY>#<自然な並びキー>
 
 | 項目 | 役割 | デモ店の値 | 重複 |
 |---|---|---|---|
-| `inboundId` | 着信がどの店宛てかを決める | 店ごとの識別子 | 不可 |
+| `inboundId` | 着信がどの店宛てかを決める | `+810000000001`（デモ用の固定番号） | 不可 |
 | `transferPhoneNumber` | AIが対応できないとき人につなぐ | 開発者の電話番号 | 可（全デモ店で同じでよい） |
 
 - 開発者の電話番号を `inboundId` に入れない。Connect が着信先として渡すのは Connect 側の番号で、個人の携帯番号で着信を受けることはないため、店舗を引けなくなる。
-- WebRTC 通話には着信先の電話番号がない。通信ウィジェットの `contactAttributes` で店舗識別子を渡し（フロー上は `HostedWidget-inboundId`）、それを `inboundId` と照合する。この属性はブラウザ側で書き換えられるので、本番で改ざんを防ぐ必要があれば JWT で渡す。
-- ブラウザから渡す属性は利用者側で書き換えられる。デモでは許容し、実運用で使う場合は署名付き（JWT）で渡す。
+- **番号は「あれば使う、無ければデモ用の固定値」**。店舗特定の Lambda（`resolve_store`）の先頭で決める。
+  - 着信先：`SystemEndpoint` があればそれ。無ければ（WebRTC）`DEMO_INBOUND_NUMBER`（既定 `+810000000001`）
+  - かけてきた番号：`CustomerEndpoint` があればそれ。無ければ `DEMO_CALLER_NUMBER`（既定 `+810000000000`）
+  - 固定値は `+81` の直後が `0` で、日本の番号として存在しえない。実在する人や会社の番号に当たらない。
+  - デモ値を使ったときは `callerNumberIsDemo=true` を返す。この番号は予約の `customerPhone` や通話の `callerNumber` に保存しない。
+- この方式なら、店舗特定の処理は実電話も WebRTC も「番号 → `INBOUND#` を引く」の1本で済む。WebRTC で複数店を試したくなったら、ウィジェットの `contactAttributes`（フロー上は `HostedWidget-inboundId`）で番号を上書きする。ブラウザ側で書き換えられる値なので、実運用で使うなら JWT で渡す。
 - 外部転送には、発信者番号として使う Connect 側の取得済み番号が1つ必要。取得できない間は `transferPhoneNumber` を使わず、エージェント画面（CCP）へ転送する。
 - 実運用で店の代表番号を Connect へ転送している場合、`transferPhoneNumber` に同じ代表番号を入れると着信がループする。人が直接出られる別の番号にする。
 - 実際の電話番号はリポジトリに書かない（公開リポジトリのため）。シード投入時に環境変数などで渡す。
@@ -281,8 +285,8 @@ AI回答用の知識を後から増やしても、店舗PK配下に足すだけ�
 | callId | S | |
 | channel | S | `webrtc` / `pstn` |
 | direction | S | `inbound` / `outbound` |
-| callerNumber | S | **かけてきた側の番号**。WebRTC の通話では取得できないため、その場合は属性を付けない |
-| calledNumber | S | **着信先**（店舗の `inboundId`。実電話は Connect 側の番号、WebRTC は店舗識別子） |
+| callerNumber | S | **かけてきた側の番号**。WebRTC ではデモ用の固定値になるため保存しない（属性を付けない） |
+| calledNumber | S | **着信先**（店舗の `inboundId`。実電話は Connect 側の番号、WebRTC はデモ用の固定番号） |
 | startedAt / endedAt | S | |
 | durationSec | N | |
 | transferred | BOOL | 外部転送したか |
@@ -403,7 +407,7 @@ MVPでは仮押さえなしの「確認→即確定トランザクション」�
 PK: TENANT#t_demo_001
 SK: PROFILE
 name: デモ食堂さくら
-inboundId: demo-sakura              # 着信先の識別子（店ごとに別の値）
+inboundId: +810000000001            # 着信先。WebRTC デモ用の固定番号（実在しえない番号）
 standardDurationMin: 120
 reservationSlotMin: 15
 transferPhoneNumber: +8190xxxxxxxx  # デモ：開発者の番号（全デモ店で同じでよい）
@@ -413,7 +417,7 @@ status: active
 ### 着信先→店舗の対応表
 
 ```
-PK: INBOUND#demo-sakura
+PK: INBOUND#+810000000001
 SK: TENANT
 tenantId: t_demo_001
 ```
@@ -454,8 +458,8 @@ status: confirmed
 ```
 PK: TENANT#t_demo_001
 SK: CALL#START#2026-11-14T01:00:00Z#CALLID#contact-xxx
-calledNumber: demo-sakura
-channel: webrtc                     # WebRTC のため callerNumber は無し（実電話なら +81... が入る）
+calledNumber: +810000000001
+channel: webrtc                     # WebRTC のため callerNumber は保存しない（実電話なら +81... が入る）
 transferred: false
 result: reserved
 reservationId: 01JB...
@@ -526,7 +530,7 @@ reservationId: 01JB...
 | 時刻キー | `HHmm`（`1900`）。表示は `19:00` |
 | 日付キー | `yyyy-mm-dd`（店舗タイムゾーン） |
 | キーに入れる日時 | UTC の ISO8601（例：`2026-11-14T01:00:00Z`）。オフセットが混ざると並び順が崩れる |
-| inboundId | 実電話は E.164（Connect 側の番号）。WebRTC は `demo-sakura` のような固定ID |
+| inboundId | E.164。実電話は Connect 側の番号、WebRTC はデモ用の固定番号 `+810000000001` |
 
 ---
 
