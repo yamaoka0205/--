@@ -1,0 +1,314 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "11111111-1111-4111-8111-111111111101",
+  "Metadata": {
+    "EntryPointPosition": {
+      "x": 40,
+      "y": 40
+    },
+    "ActionMetadata": {
+      "11111111-1111-4111-8111-111111111101": {
+        "Position": {
+          "x": 160,
+          "y": 40
+        }
+      },
+      "11111111-1111-4111-8111-111111111102": {
+        "Position": {
+          "x": 400,
+          "y": 40
+        }
+      },
+      "11111111-1111-4111-8111-111111111103": {
+        "Position": {
+          "x": 640,
+          "y": 40
+        }
+      },
+      "11111111-1111-4111-8111-111111111104": {
+        "Position": {
+          "x": 880,
+          "y": 40
+        }
+      },
+      "11111111-1111-4111-8111-111111111105": {
+        "Position": {
+          "x": 1120,
+          "y": 40
+        }
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "Position": {
+          "x": 1120,
+          "y": 220
+        }
+      },
+      "11111111-1111-4111-8111-111111111107": {
+        "Position": {
+          "x": 1360,
+          "y": -40
+        }
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "Position": {
+          "x": 1360,
+          "y": 120
+        }
+      },
+      "11111111-1111-4111-8111-111111111109": {
+        "Position": {
+          "x": 1120,
+          "y": 400
+        }
+      },
+      "11111111-1111-4111-8111-111111111110": {
+        "Position": {
+          "x": 1360,
+          "y": 280
+        }
+      },
+      "11111111-1111-4111-8111-111111111111": {
+        "Position": {
+          "x": 1600,
+          "y": 120
+        }
+      }
+    }
+  },
+  "Actions": [
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111101",
+      "Type": "UpdateContactTextToSpeechVoice",
+      "Parameters": {
+        "TextToSpeechVoice": "Mizuki"
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111102",
+        "Errors": [
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111102",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111102",
+      "Type": "InvokeLambdaFunction",
+      "Parameters": {
+        "LambdaFunctionARN": "arn:aws:lambda:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:function:BookingAppResolveStore",
+        "InvocationTimeLimitSeconds": "8",
+        "InvocationType": "SYNCHRONOUS",
+        "ResponseValidation": {
+          "ResponseType": "STRING_MAP"
+        }
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111103",
+        "Errors": [
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111109",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111103",
+      "Type": "UpdateContactAttributes",
+      "Parameters": {
+        "Attributes": {
+          "found": "$.External.found",
+          "callType": "$.External.callType",
+          "tenantId": "$.External.tenantId",
+          "storeName": "$.External.storeName",
+          "inboundId": "$.External.inboundId",
+          "callerNumber": "$.External.callerNumber",
+          "callerNumberAvailable": "$.External.callerNumberAvailable",
+          "inboundIsDemo": "$.External.inboundIsDemo",
+          "callerNumberIsDemo": "$.External.callerNumberIsDemo",
+          "transferPhoneNumber": "$.External.transferPhoneNumber"
+        },
+        "TargetContact": "Current"
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111104",
+        "Errors": [
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111109",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111104",
+      "Type": "Compare",
+      "Parameters": {
+        "ComparisonValue": "$.Attributes.found"
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111109",
+        "Conditions": [
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111105",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "true"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111109",
+            "ErrorType": "NoMatchingCondition"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111105",
+      "Type": "GetParticipantInput",
+      "Parameters": {
+        "StoreInput": "False",
+        "InputTimeLimitSeconds": "8",
+        "Text": "お電話ありがとうございます。$.Attributes.storeNameです。ご予約の方は1を、それ以外のお問い合わせは2を押してください。"
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111106",
+        "Conditions": [
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111107",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "1"
+              ]
+            }
+          },
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111108",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "2"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111106",
+            "ErrorType": "InputTimeLimitExceeded"
+          },
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111106",
+            "ErrorType": "NoMatchingCondition"
+          },
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111110",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111106",
+      "Type": "GetParticipantInput",
+      "Parameters": {
+        "StoreInput": "False",
+        "InputTimeLimitSeconds": "8",
+        "Text": "もう一度お願いします。ご予約の方は1を、それ以外のお問い合わせは2を押してください。"
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111110",
+        "Conditions": [
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111107",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "1"
+              ]
+            }
+          },
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111108",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "2"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111110",
+            "ErrorType": "InputTimeLimitExceeded"
+          },
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111110",
+            "ErrorType": "NoMatchingCondition"
+          },
+          {
+            "NextAction": "11111111-1111-4111-8111-111111111110",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111107",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "予約の受付を開始します。ご希望の日時と人数をお話しください。このあとの会話はこれから接続します。"
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111111",
+        "Errors": []
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111108",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "お問い合わせを受け付けます。ご用件をお話しください。このあとの回答はこれから接続します。"
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111111",
+        "Errors": []
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111109",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "申し訳ありません。店舗を特定できませんでした。電話番号をご確認のうえ、再度おかけ直しください。"
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111111",
+        "Errors": []
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111110",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "申し訳ありません。入力を確認できませんでした。担当者への引き継ぎはこれから接続します。いったん通話を終了します。"
+      },
+      "Transitions": {
+        "NextAction": "11111111-1111-4111-8111-111111111111",
+        "Errors": []
+      }
+    },
+    {
+      "Identifier": "11111111-1111-4111-8111-111111111111",
+      "Type": "DisconnectParticipant",
+      "Parameters": {},
+      "Transitions": {}
+    }
+  ]
+}
