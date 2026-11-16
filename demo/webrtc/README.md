@@ -28,9 +28,8 @@ python3 -m http.server 3000 --bind localhost
 ## Connect 側の前提
 
 - 通信ウィジェットの許可ドメインに `http://localhost:3000` を登録する
-- ウィジェットに紐づけるフローは全店共通フロー
-- Connect の「フロー → AWS Lambda」に `BookingAppResolveStore` を追加し、フロー先頭の「AWS Lambda 関数を呼び出す」ブロックで呼ぶ（応答の検証は STRING_MAP）
-- 返り値の `storeName` を `$.External.storeName` として「〇〇店です」の読み上げに使う。`found=false` なら店舗不明の案内へ
+- ウィジェットに紐づけるフローは **`BookingApp-Inbound`**（作成済み。手順は `infra/connect/README.md`）
+- `BookingAppResolveStore` はインスタンスに関連付け済み。フロー先頭で呼ぶ
 
 ## 数字キー（1/2）
 
