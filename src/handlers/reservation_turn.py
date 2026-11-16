@@ -40,7 +40,17 @@ def _attrs(event: dict[str, Any]) -> dict[str, Any]:
             attrs.update(json.loads(event["body"] or "{}"))
         except json.JSONDecodeError:
             pass
-    for k in ("tenantId", "utterance", "dtmf", "phase", "date", "time", "partySize", "name"):
+    for k in (
+        "tenantId",
+        "utterance",
+        "dtmf",
+        "phase",
+        "step",
+        "date",
+        "time",
+        "partySize",
+        "name",
+    ):
         if k in event and k not in attrs:
             attrs[k] = event[k]
     return attrs
@@ -87,6 +97,7 @@ def handler(event: dict[str, Any] | None = None, context: Any = None) -> dict[st
         "time",
         "partySize",
         "name",
+        "step",
         "phase",
         "lastPrompt",
         "resultStatus",

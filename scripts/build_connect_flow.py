@@ -214,7 +214,7 @@ def content() -> dict:
                 "Identifier": ids["lex_reserve"],
                 "Type": "ConnectParticipantWithLexBot",
                 "Parameters": {
-                    "Text": "ご希望の日時と人数、お名前をお話しください。",
+                    "Text": "人数は何人ですか。1から6の数字でお答えください。ボタンでも入力できます。",
                     "LexV2Bot": {"AliasArn": LEX_ALIAS},
                     "LexSessionAttributes": {
                         "tenantId": "$.Attributes.tenantId",
