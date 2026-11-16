@@ -1,0 +1,29 @@
+"""Lex V2 alias code-hook router for BookingAppPhone."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from typing import Any
+
+_SRC = Path(__file__).resolve().parents[1]
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from handlers import faq_turn, reservation_turn
+
+
+def handler(event: dict[str, Any] | None = None, context: Any = None) -> dict[str, Any]:
+    event = event or {}
+    session = (event.get("sessionState") or {}).get("sessionAttributes") or {}
+    intent = ((event.get("sessionState") or {}).get("intent") or {}).get("name") or ""
+    hint = session.get("intentHint") or ""
+    if hint in {"AskFaq", "BookReservation"}:
+        intent = hint
+    elif intent == "AskFaq":
+        pass
+    else:
+        intent = "BookReservation"
+    if intent == "AskFaq":
+        return faq_turn.handler(event, context)
+    return reservation_turn.handler(event, context)

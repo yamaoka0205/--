@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Create or update the BookingApp-Inbound Connect contact flow.
-
-Reads infra/connect/BookingApp-Inbound.flow.json (ARN placeholders) and
-substitutes the live BookingAppResolveStore ARN for this account/region.
-"""
+"""Create or update the BookingApp-Inbound Connect contact flow."""
 
 from __future__ import annotations
 
@@ -13,15 +9,21 @@ import sys
 from pathlib import Path
 
 import boto3
+from botocore.exceptions import ClientError
 
 ROOT = Path(__file__).resolve().parents[1]
 FLOW_PATH = ROOT / "infra" / "connect" / "BookingApp-Inbound.flow.json"
+LEX_META = ROOT / "build" / "lex_bot.json"
 FLOW_NAME = "BookingApp-Inbound"
 INSTANCE_ID = os.environ.get(
     "CONNECT_INSTANCE_ID", "98c809c0-0dd7-414f-979a-bf7816f5bfae"
 )
-PLACEHOLDER = (
+PLACEHOLDER_LAMBDA = (
     "arn:aws:lambda:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:function:BookingAppResolveStore"
+)
+PLACEHOLDER_LEX = (
+    "arn:aws:lex:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:bot-alias/"
+    "${LEX_BOT_ID}/${LEX_ALIAS_ID}"
 )
 
 
@@ -30,6 +32,11 @@ def main() -> int:
     if not region:
         print("ERROR: set AWS_DEFAULT_REGION", file=sys.stderr)
         return 1
+
+    # Refresh template with current placeholders
+    from build_connect_flow import main as build_template
+
+    build_template()
 
     session = boto3.Session(region_name=region)
     sts = session.client("sts")
@@ -40,11 +47,29 @@ def main() -> int:
         "Configuration"
     ]["FunctionArn"]
 
+    if not LEX_META.exists():
+        print(
+            f"ERROR: {LEX_META} missing. Run scripts/deploy_lex_bot.py first.",
+            file=sys.stderr,
+        )
+        return 1
+    lex = json.loads(LEX_META.read_text())
+    lex_arn = lex["aliasArn"]
+
     try:
         connect.associate_lambda_function(InstanceId=INSTANCE_ID, FunctionArn=fn_arn)
         print(f"Associated {fn_arn}")
-    except connect.exceptions.ResourceConflictException:
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] != "ResourceConflictException":
+            raise
         print("Lambda already associated")
+
+    # Associate Lex with Connect if needed
+    try:
+        connect.associate_bot(InstanceId=INSTANCE_ID, LexV2Bot={"AliasArn": lex_arn})
+        print("Associated Lex bot")
+    except ClientError as exc:
+        print(f"associate_bot: {exc.response['Error']['Code']}")
 
     instance_arn = f"arn:aws:connect:{region}:{account}:instance/{INSTANCE_ID}"
     try:
@@ -56,15 +81,16 @@ def main() -> int:
             SourceAccount=account,
             SourceArn=instance_arn,
         )
-        print("Added Lambda invoke permission for Connect")
-    except lam.exceptions.ResourceConflictException:
-        print("Lambda invoke permission exists")
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] != "ResourceConflictException":
+            raise
 
     raw = FLOW_PATH.read_text()
-    if PLACEHOLDER not in raw:
-        print(f"ERROR: expected placeholder ARN in {FLOW_PATH}", file=sys.stderr)
+    raw = raw.replace(PLACEHOLDER_LAMBDA, fn_arn).replace(PLACEHOLDER_LEX, lex_arn)
+    if "${" in raw:
+        print("ERROR: unresolved placeholders remain", file=sys.stderr)
         return 1
-    content = json.loads(raw.replace(PLACEHOLDER, fn_arn))
+    content = json.loads(raw)
     body = json.dumps(content)
 
     existing = connect.list_contact_flows(InstanceId=INSTANCE_ID).get(
@@ -82,10 +108,7 @@ def main() -> int:
             InstanceId=INSTANCE_ID,
             Name=FLOW_NAME,
             Type="CONTACT_FLOW",
-            Description=(
-                "BookingApp shared inbound flow: resolve store, greet, "
-                "DTMF 1=reservation 2=inquiry"
-            ),
+            Description="BookingApp inbound: resolve store, DTMF, Lex reserve/FAQ",
             Content=body,
         )
         flow_id = resp["ContactFlowId"]
@@ -95,6 +118,7 @@ def main() -> int:
     cf = desc["ContactFlow"]
     print(f"State={cf.get('State')} Status={cf.get('Status')}")
     print(f"Arn={cf['Arn']}")
+    print(f"LexAlias={lex_arn}")
     return 0
 
 

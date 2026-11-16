@@ -41,6 +41,15 @@ CONNECT_FUNCTIONS = {
     "BookingAppResolveStore": {
         "handler": "handlers.resolve_store.handler",
     },
+    "BookingAppReservationTurn": {
+        "handler": "handlers.reservation_turn.handler",
+    },
+    "BookingAppFaqTurn": {
+        "handler": "handlers.faq_turn.handler",
+    },
+    "BookingAppPhoneTurn": {
+        "handler": "handlers.phone_turn.handler",
+    },
 }
 
 
@@ -94,7 +103,14 @@ def ensure_role(iam, account: str, reg: str) -> str:
 
 
 def ensure_function(lam, name: str, handler: str, role_arn: str, zip_path: Path, reg: str):
-    env = {"Variables": {"BOOKING_TABLE_NAME": "BookingApp"}}
+    env = {
+        "Variables": {
+            "BOOKING_TABLE_NAME": "BookingApp",
+            "BEDROCK_MODEL_ID": os.environ.get(
+                "BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0"
+            ),
+        }
+    }
     zip_bytes = zip_path.read_bytes()
     try:
         lam.get_function(FunctionName=name)

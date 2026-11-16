@@ -249,6 +249,52 @@ def put_tables(table, now: str) -> None:
     print(f"Upserted TABLE ({ai} AI + {walk} walk-in)")
 
 
+FAQS = [
+    {
+        "faqId": "hours",
+        "question": "営業時間は何時から何時までですか",
+        "answer": "月曜から土曜の11時から22時まで営業しています。日曜は定休日です。最終のご予約開始は20時までです。",
+        "tags": ["営業", "時間", "定休", "何時"],
+    },
+    {
+        "faqId": "parking",
+        "question": "駐車場はありますか",
+        "answer": "近隣のコインパーキングをご利用ください。店舗専用駐車場はありません。",
+        "tags": ["駐車", "パーキング", "車"],
+    },
+    {
+        "faqId": "smoke",
+        "question": "禁煙ですか",
+        "answer": "店内は全面禁煙です。",
+        "tags": ["禁煙", "喫煙", "タバコ"],
+    },
+    {
+        "faqId": "kids",
+        "question": "子ども連れでも大丈夫ですか",
+        "answer": "お子様連れのご来店も歓迎です。ベビーカーでのご入店も可能です。",
+        "tags": ["子供", "子ども", "お子様", "ベビー"],
+    },
+]
+
+
+def put_faqs(table, now: str) -> None:
+    with table.batch_writer() as batch:
+        for faq in FAQS:
+            batch.put_item(
+                Item={
+                    "PK": f"TENANT#{TENANT_ID}",
+                    "SK": f"FAQ#{faq['faqId']}",
+                    "entityType": "FAQ",
+                    "tenantId": TENANT_ID,
+                    "question": faq["question"],
+                    "answer": faq["answer"],
+                    "tags": faq["tags"],
+                    "updatedAt": now,
+                }
+            )
+    print(f"Upserted FAQ ({len(FAQS)})")
+
+
 def summarize(table) -> None:
     from boto3.dynamodb.conditions import Key
 
@@ -266,6 +312,10 @@ def summarize(table) -> None:
         KeyConditionExpression=Key("PK").eq(f"TENANT#{TENANT_ID}")
         & Key("SK").begins_with("TABLE#")
     ).get("Items", [])
+    faqs = table.query(
+        KeyConditionExpression=Key("PK").eq(f"TENANT#{TENANT_ID}")
+        & Key("SK").begins_with("FAQ#")
+    ).get("Items", [])
 
     print("OK")
     print(f"  tenantId:   {TENANT_ID}")
@@ -279,6 +329,7 @@ def summarize(table) -> None:
     print(
         f"  aiBookable: {sum(1 for t in tables if t.get('aiBookable'))}"
     )
+    print(f"  faqs:       {len(faqs)}")
 
 
 def main() -> int:
@@ -324,6 +375,7 @@ def main() -> int:
     put_profile_and_inbound(client, args.table_name, args.transfer_phone, now)
     put_hours(table, now)
     put_tables(table, now)
+    put_faqs(table, now)
     summarize(table)
     if not args.transfer_phone:
         print(
