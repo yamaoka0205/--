@@ -1,9 +1,28 @@
 import type { ListReservationsResponse, Store, StoreFaq, StoreHours } from './types'
 
-export const DEMO_TENANT_ID = 't_demo_001'
+const TOKEN_KEY = 'bookingapp.accessToken'
+
+export function getStoredToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function setStoredToken(token: string | null) {
+  if (token) localStorage.setItem(TOKEN_KEY, token)
+  else localStorage.removeItem(TOKEN_KEY)
+}
+
+export type AuthSession = {
+  status: string
+  userId: string
+  tenantId: string
+  displayName: string
+  email: string
+  role: string
+  storeName?: string
+  accessToken?: string
+}
 
 function baseUrl(): string {
-  // In dev, always go through Vite proxy (/api → API Gateway) to avoid CORS hassle.
   if (import.meta.env.DEV) return '/api'
   const fromEnv = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '')
   if (!fromEnv) {
@@ -12,10 +31,19 @@ function baseUrl(): string {
   return fromEnv
 }
 
-async function post<T>(path: string, body: Record<string, unknown>): Promise<T> {
+async function post<T>(
+  path: string,
+  body: Record<string, unknown> = {},
+  opts?: { auth?: boolean },
+): Promise<T> {
+  const headers: Record<string, string> = { 'content-type': 'application/json' }
+  if (opts?.auth !== false) {
+    const token = getStoredToken()
+    if (token) headers.authorization = `Bearer ${token}`
+  }
   const res = await fetch(`${baseUrl()}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   })
   const data = (await res.json()) as T & { status?: string; reason?: string }
@@ -26,32 +54,43 @@ async function post<T>(path: string, body: Record<string, unknown>): Promise<T> 
   return data
 }
 
-export function listReservations(date: string, tenantId = DEMO_TENANT_ID) {
-  return post<ListReservationsResponse>('/reservations/list', { tenantId, date })
+export function login(email: string, password: string) {
+  return post<AuthSession & { accessToken: string; storeName?: string }>(
+    '/auth/login',
+    { email, password },
+    { auth: false },
+  )
 }
 
-export function getStore(tenantId = DEMO_TENANT_ID) {
-  return post<Store>('/store/get', { tenantId })
+export function logout() {
+  return post<{ status: string }>('/auth/logout', {})
+}
+
+export function authMe() {
+  return post<AuthSession>('/auth/me', {})
+}
+
+export function listReservations(date: string) {
+  return post<ListReservationsResponse>('/reservations/list', { date })
+}
+
+export function getStore() {
+  return post<Store>('/store/get', {})
 }
 
 export function updateStore(input: {
-  tenantId?: string
   name?: string
   standardDurationMin?: number
   hours?: StoreHours[]
   faqs?: StoreFaq[]
 }) {
-  return post<Store>('/store/update', {
-    tenantId: input.tenantId || DEMO_TENANT_ID,
-    ...input,
-  })
+  return post<Store>('/store/update', { ...input })
 }
 
 export function checkAvailability(input: {
   date: string
   startTime: string
   partySize: number
-  tenantId?: string
 }) {
   return post<{
     status: string
@@ -60,7 +99,6 @@ export function checkAvailability(input: {
     reason?: string
     standardDurationMin?: number
   }>('/availability/check', {
-    tenantId: input.tenantId || DEMO_TENANT_ID,
     date: input.date,
     startTime: input.startTime,
     partySize: input.partySize,
@@ -73,7 +111,6 @@ export function confirmReservation(input: {
   partySize: number
   customerName: string
   customerPhone?: string
-  tenantId?: string
 }) {
   return post<{
     status: string
@@ -82,7 +119,6 @@ export function confirmReservation(input: {
     tableId?: string
     reason?: string
   }>('/reservations/confirm', {
-    tenantId: input.tenantId || DEMO_TENANT_ID,
     date: input.date,
     startTime: input.startTime,
     partySize: input.partySize,

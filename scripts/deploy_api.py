@@ -56,6 +56,21 @@ FUNCTIONS = {
         "route": "POST /store/update",
         "key": "updateStore",
     },
+    "BookingAppLogin": {
+        "handler": "handlers.login.handler",
+        "route": "POST /auth/login",
+        "key": "login",
+    },
+    "BookingAppLogout": {
+        "handler": "handlers.logout.handler",
+        "route": "POST /auth/logout",
+        "key": "logout",
+    },
+    "BookingAppAuthMe": {
+        "handler": "handlers.auth_me.handler",
+        "route": "POST /auth/me",
+        "key": "authMe",
+    },
 }
 # Called only from the Connect flow; no public URL or API route.
 CONNECT_FUNCTIONS = {
@@ -136,15 +151,31 @@ def _wait_updated(lam, name: str) -> None:
     )
 
 
-def ensure_function(lam, name: str, handler: str, role_arn: str, zip_path: Path, reg: str):
-    env = {
-        "Variables": {
-            "BOOKING_TABLE_NAME": "BookingApp",
-            "BEDROCK_MODEL_ID": os.environ.get(
-                "BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0"
-            ),
+def cognito_env() -> dict[str, str]:
+    path = ROOT / "build" / "cognito.json"
+    if not path.exists():
+        return {
+            "COGNITO_USER_POOL_ID": os.environ.get("COGNITO_USER_POOL_ID", ""),
+            "COGNITO_CLIENT_ID": os.environ.get("COGNITO_CLIENT_ID", ""),
         }
+    data = json.loads(path.read_text())
+    return {
+        "COGNITO_USER_POOL_ID": data.get("userPoolId")
+        or os.environ.get("COGNITO_USER_POOL_ID", ""),
+        "COGNITO_CLIENT_ID": data.get("clientId")
+        or os.environ.get("COGNITO_CLIENT_ID", ""),
     }
+
+
+def ensure_function(lam, name: str, handler: str, role_arn: str, zip_path: Path, reg: str):
+    env_vars = {
+        "BOOKING_TABLE_NAME": "BookingApp",
+        "BEDROCK_MODEL_ID": os.environ.get(
+            "BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0"
+        ),
+        **cognito_env(),
+    }
+    env = {"Variables": {k: v for k, v in env_vars.items() if v}}
     zip_bytes = zip_path.read_bytes()
     try:
         current = lam.get_function(FunctionName=name)["Configuration"]
@@ -229,7 +260,7 @@ def ensure_function_urls(lam) -> dict[str, str]:
                 Cors={
                     "AllowOrigins": ["*"],
                     "AllowMethods": ["POST"],
-                    "AllowHeaders": ["content-type"],
+                    "AllowHeaders": ["content-type", "authorization"],
                 },
             )
             print(f"Created Function URL for {fn_name}")
@@ -237,6 +268,17 @@ def ensure_function_urls(lam) -> dict[str, str]:
             if exc.response["Error"]["Code"] != "ResourceConflictException":
                 raise
             cfg = lam.get_function_url_config(FunctionName=fn_name)
+            try:
+                lam.update_function_url_config(
+                    FunctionName=fn_name,
+                    Cors={
+                        "AllowOrigins": ["*"],
+                        "AllowMethods": ["POST"],
+                        "AllowHeaders": ["content-type", "authorization"],
+                    },
+                )
+            except ClientError:
+                pass
             print(f"Function URL exists for {fn_name}")
 
         _add_permission(
@@ -271,13 +313,24 @@ def ensure_http_api(apigw, lam, account: str, reg: str) -> str:
             Name=API_NAME,
             ProtocolType="HTTP",
             CorsConfiguration={
-                "AllowHeaders": ["content-type"],
+                "AllowHeaders": ["content-type", "authorization"],
                 "AllowMethods": ["POST", "OPTIONS"],
                 "AllowOrigins": ["*"],
             },
         )["ApiId"]
     else:
         print(f"HTTP API exists {api_id}")
+        try:
+            apigw.update_api(
+                ApiId=api_id,
+                CorsConfiguration={
+                    "AllowHeaders": ["content-type", "authorization"],
+                    "AllowMethods": ["POST", "OPTIONS"],
+                    "AllowOrigins": ["*"],
+                },
+            )
+        except ClientError as exc:
+            print(f"CORS update skipped: {exc.response['Error'].get('Code')}")
 
     try:
         apigw.create_stage(ApiId=api_id, StageName="prod", AutoDeploy=True)
@@ -433,6 +486,9 @@ def main() -> int:
     print("OK", flush=True)
     if api_base:
         print(f"API Gateway Base URL: {api_base}")
+        print(f"  POST {api_base}/auth/login")
+        print(f"  POST {api_base}/auth/logout")
+        print(f"  POST {api_base}/auth/me")
         print(f"  POST {api_base}/availability/check")
         print(f"  POST {api_base}/reservations/confirm")
         print(f"  POST {api_base}/reservations/list")
@@ -442,6 +498,9 @@ def main() -> int:
             {
                 "mode": "api_gateway",
                 "baseUrl": api_base,
+                "login": f"{api_base}/auth/login",
+                "logout": f"{api_base}/auth/logout",
+                "authMe": f"{api_base}/auth/me",
                 "checkAvailability": f"{api_base}/availability/check",
                 "confirmReservation": f"{api_base}/reservations/confirm",
                 "listReservations": f"{api_base}/reservations/list",

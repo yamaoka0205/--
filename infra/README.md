@@ -111,8 +111,19 @@ curl -sS -X POST "$CHECK" \
 
 管理画面用（Phase 3）:
 
-- `POST .../reservations/list` … 日付の予約一覧
-- `POST .../store/get` … 店舗設定取得
-- `POST .../store/update` … 店舗設定更新（店名・利用時間・営業時間・FAQ）
+- `POST .../auth/login` … Cognito ログイン
+- `POST .../auth/logout` … Cognito ログアウト
+- `POST .../auth/me` … セッション確認
+- `POST .../reservations/list` … 日付の予約一覧（要ログイン）
+- `POST .../store/get` … 店舗設定取得（要ログイン）
+- `POST .../store/update` … 店舗設定更新（要ログイン）
+
+認証セットアップ:
+
+```bash
+python3 scripts/setup_cognito_admin.py
+python3 scripts/seed_demo_admin.py
+python3 scripts/deploy_api.py
+```
 
 フロントは `admin/`（`npm run dev`）。

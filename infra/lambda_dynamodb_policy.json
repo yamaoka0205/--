@@ -35,6 +35,17 @@
         "bedrock:InvokeModel"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "CognitoAuth",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:InitiateAuth",
+        "cognito-idp:GetUser",
+        "cognito-idp:GlobalSignOut",
+        "cognito-idp:AdminGetUser"
+      ],
+      "Resource": "*"
     }
   ]
 }

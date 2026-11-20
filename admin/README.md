@@ -4,11 +4,25 @@
 
 ## 方針（使いやすさ最優先）
 
+- ログイン／ログアウトあり（Amazon Cognito）
 - 正面は「今日の予約」一覧（時刻が大きい・人数が丸・名前が太い）
 - 予約登録は右シート。人数・時刻は大きなチップ
 - 確定後は緑の完了表示（入力画面と区別）
 - 設定は「基本 → 営業時間 → 席の確認 → FAQ」の4ブロック
 - ナビはアイコン＋ラベル（アイコンだけにしない）
+
+## デモ用ログイン（Cognito）
+
+```
+メール: demo@sakura.local
+パスワード: Demo-pass-2026!
+```
+
+```bash
+python3 scripts/setup_cognito_admin.py   # User Pool / デモユーザー
+python3 scripts/seed_demo_admin.py       # MEMBERSHIP（店舗紐づけ）
+python3 scripts/deploy_api.py            # Lambda に Cognito 設定を渡す
+```
 
 ## 起動
 
@@ -28,10 +42,13 @@ npm run dev
 
 | 経路 | 用途 |
 |---|---|
-| `POST /reservations/list` | 日付の予約一覧 |
-| `POST /reservations/confirm` | 手動予約 |
-| `POST /availability/check` | 空席確認 |
-| `POST /store/get` | 店舗設定取得 |
-| `POST /store/update` | 店舗設定更新 |
+| `POST /auth/login` | ログイン |
+| `POST /auth/logout` | ログアウト |
+| `POST /auth/me` | セッション確認 |
+| `POST /reservations/list` | 日付の予約一覧（要ログイン） |
+| `POST /reservations/confirm` | 手動予約（要ログイン） |
+| `POST /availability/check` | 空席確認（要ログイン） |
+| `POST /store/get` | 店舗設定取得（要ログイン） |
+| `POST /store/update` | 店舗設定更新（要ログイン） |
 
 デプロイ: リポジトリルートで `python3 scripts/deploy_api.py`
