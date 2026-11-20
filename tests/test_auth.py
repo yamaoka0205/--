@@ -57,15 +57,18 @@ def test_session_from_access_token():
         }
     )
 
-    with patch.object(
-        auth_mod,
-        "get_user_from_access_token",
-        return_value={
-            "sub": "sub-123",
-            "email": "demo@sakura.local",
-            "name": "さくら店長",
-            "username": "demo@sakura.local",
-        },
+    with (
+        patch.object(
+            auth_mod,
+            "get_user_from_access_token",
+            return_value={
+                "sub": "sub-123",
+                "email": "demo@sakura.local",
+                "name": "さくら店長",
+                "username": "demo@sakura.local",
+            },
+        ),
+        patch.object(auth_mod, "user_in_operator_group", return_value=False),
     ):
         session = auth_mod.session_from_access_token(store, "fake-token")
     assert session is not None
@@ -104,6 +107,7 @@ def test_login_with_password_success():
                 "username": "demo@sakura.local",
             },
         ),
+        patch.object(auth_mod, "user_in_operator_group", return_value=False),
     ):
         client = cognito_factory.return_value
         client.initiate_auth.return_value = {
@@ -121,3 +125,41 @@ def test_login_with_password_success():
     assert result["status"] == "ok"
     assert result["accessToken"] == "access"
     assert result["tenantId"] == "t_demo_001"
+
+
+def test_login_operator_without_membership():
+    store = FakeStore()
+    with (
+        patch.object(
+            auth_mod,
+            "cognito_config",
+            return_value={"clientId": "abc", "userPoolId": "pool", "region": "test-region"},
+        ),
+        patch.object(auth_mod, "_cognito") as cognito_factory,
+        patch.object(auth_mod, "BookingStore", return_value=store),
+        patch.object(
+            auth_mod,
+            "get_user_from_access_token",
+            return_value={
+                "sub": "op-1",
+                "email": "operator@sakura.local",
+                "name": "運営者",
+                "username": "operator@sakura.local",
+            },
+        ),
+        patch.object(auth_mod, "user_in_operator_group", return_value=True),
+    ):
+        client = cognito_factory.return_value
+        client.initiate_auth.return_value = {
+            "AuthenticationResult": {
+                "AccessToken": "access-op",
+                "ExpiresIn": 3600,
+            }
+        }
+        result = auth_mod.login_with_password(
+            email="operator@sakura.local", password="Demo-pass-2026!"
+        )
+
+    assert result["status"] == "ok"
+    assert result["role"] == "operator"
+    assert result["accessToken"] == "access-op"

@@ -28,6 +28,9 @@ POOL_NAME = "BookingAppAdmin"
 CLIENT_NAME = "BookingAppAdminWeb"
 DEMO_EMAIL = os.environ.get("DEMO_ADMIN_EMAIL", "demo@sakura.local")
 DEMO_PASSWORD = os.environ.get("DEMO_ADMIN_PASSWORD", "Demo-pass-2026!")
+OPERATOR_EMAIL = os.environ.get("DEMO_OPERATOR_EMAIL", "operator@sakura.local")
+OPERATOR_PASSWORD = os.environ.get("DEMO_OPERATOR_PASSWORD", "Demo-pass-2026!")
+OPERATOR_GROUP = "operators"
 
 
 def region() -> str:
@@ -172,12 +175,79 @@ def ensure_demo_user(cognito, pool_id: str) -> str:
     return sub
 
 
+def ensure_operator_group(cognito, pool_id: str) -> None:
+    try:
+        cognito.create_group(
+            GroupName=OPERATOR_GROUP,
+            UserPoolId=pool_id,
+            Description="Platform operators who approve store applications",
+        )
+        print(f"Created group {OPERATOR_GROUP}")
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] != "GroupExistsException":
+            raise
+        print(f"Group exists {OPERATOR_GROUP}")
+
+
+def ensure_operator_user(cognito, pool_id: str) -> str:
+    try:
+        cognito.admin_get_user(UserPoolId=pool_id, Username=OPERATOR_EMAIL)
+        print(f"Operator user exists {OPERATOR_EMAIL}")
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] != "UserNotFoundException":
+            raise
+        print(f"Creating operator user {OPERATOR_EMAIL}")
+        cognito.admin_create_user(
+            UserPoolId=pool_id,
+            Username=OPERATOR_EMAIL,
+            UserAttributes=[
+                {"Name": "email", "Value": OPERATOR_EMAIL},
+                {"Name": "email_verified", "Value": "true"},
+                {"Name": "name", "Value": "運営者"},
+            ],
+            MessageAction="SUPPRESS",
+            TemporaryPassword=OPERATOR_PASSWORD,
+        )
+
+    cognito.admin_set_user_password(
+        UserPoolId=pool_id,
+        Username=OPERATOR_EMAIL,
+        Password=OPERATOR_PASSWORD,
+        Permanent=True,
+    )
+    try:
+        cognito.admin_add_user_to_group(
+            UserPoolId=pool_id,
+            Username=OPERATOR_EMAIL,
+            GroupName=OPERATOR_GROUP,
+        )
+    except ClientError as exc:
+        # Already in group is fine
+        if exc.response["Error"]["Code"] not in {
+            "ResourceNotFoundException",
+            "InvalidParameterException",
+        }:
+            # Cognito has no "already in group" code; re-add is idempotent-ish
+            pass
+    print("Operator password set; added to operators group")
+
+    user = cognito.admin_get_user(UserPoolId=pool_id, Username=OPERATOR_EMAIL)
+    attrs = {a["Name"]: a["Value"] for a in user.get("UserAttributes", [])}
+    sub = attrs.get("sub")
+    if not sub:
+        raise RuntimeError("Operator Cognito user has no sub")
+    print(f"Operator user sub={sub}")
+    return sub
+
+
 def main() -> int:
     reg = region()
     cognito = boto3.client("cognito-idp", region_name=reg)
     pool_id = ensure_pool(cognito)
     client_id = ensure_client(cognito, pool_id)
     sub = ensure_demo_user(cognito, pool_id)
+    ensure_operator_group(cognito, pool_id)
+    operator_sub = ensure_operator_user(cognito, pool_id)
 
     payload = {
         "region": reg,
@@ -185,6 +255,8 @@ def main() -> int:
         "clientId": client_id,
         "demoEmail": DEMO_EMAIL,
         "demoUserSub": sub,
+        "operatorEmail": OPERATOR_EMAIL,
+        "operatorUserSub": operator_sub,
         "issuer": f"https://cognito-idp.{reg}.amazonaws.com/{pool_id}",
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

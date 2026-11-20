@@ -71,6 +71,21 @@ FUNCTIONS = {
         "route": "POST /auth/me",
         "key": "authMe",
     },
+    "BookingAppCreateApplication": {
+        "handler": "handlers.create_application.handler",
+        "route": "POST /applications/create",
+        "key": "createApplication",
+    },
+    "BookingAppListApplications": {
+        "handler": "handlers.list_applications.handler",
+        "route": "POST /applications/list",
+        "key": "listApplications",
+    },
+    "BookingAppReviewApplication": {
+        "handler": "handlers.review_application.handler",
+        "route": "POST /applications/review",
+        "key": "reviewApplication",
+    },
 }
 # Called only from the Connect flow; no public URL or API route.
 CONNECT_FUNCTIONS = {
@@ -489,6 +504,9 @@ def main() -> int:
         print(f"  POST {api_base}/auth/login")
         print(f"  POST {api_base}/auth/logout")
         print(f"  POST {api_base}/auth/me")
+        print(f"  POST {api_base}/applications/create")
+        print(f"  POST {api_base}/applications/list")
+        print(f"  POST {api_base}/applications/review")
         print(f"  POST {api_base}/availability/check")
         print(f"  POST {api_base}/reservations/confirm")
         print(f"  POST {api_base}/reservations/list")
@@ -501,6 +519,9 @@ def main() -> int:
                 "login": f"{api_base}/auth/login",
                 "logout": f"{api_base}/auth/logout",
                 "authMe": f"{api_base}/auth/me",
+                "createApplication": f"{api_base}/applications/create",
+                "listApplications": f"{api_base}/applications/list",
+                "reviewApplication": f"{api_base}/applications/review",
                 "checkAvailability": f"{api_base}/availability/check",
                 "confirmReservation": f"{api_base}/reservations/confirm",
                 "listReservations": f"{api_base}/reservations/list",

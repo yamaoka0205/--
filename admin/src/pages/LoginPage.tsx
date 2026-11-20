@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth'
 
 export function LoginPage() {
@@ -9,7 +9,8 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!loading && session) return <Navigate to="/" replace />
+  if (!loading && session?.role === 'operator') return <Navigate to="/operator" replace />
+  if (!loading && session) return <Navigate to="/app" replace />
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -75,6 +76,12 @@ export function LoginPage() {
             パスワード <code>Demo-pass-2026!</code>
           </p>
         </details>
+
+        <p className="login-links">
+          <Link to="/apply">店舗を申し込む</Link>
+          {' · '}
+          <Link to="/">紹介ページ</Link>
+        </p>
       </form>
     </div>
   )

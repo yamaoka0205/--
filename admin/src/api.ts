@@ -127,3 +127,52 @@ export function confirmReservation(input: {
     source: 'manual',
   })
 }
+
+export type ApplicationItem = {
+  applicationId: string
+  status: string
+  storeName: string
+  contactName: string
+  contactEmail: string
+  contactPhone?: string
+  note?: string
+  createdAt?: string
+  reviewedAt?: string
+  tenantId?: string
+  rejectReason?: string
+}
+
+export function createApplication(input: {
+  storeName: string
+  contactName: string
+  contactEmail: string
+  contactPhone?: string
+  note?: string
+}) {
+  return post<{ status: string; applicationId: string; message?: string }>(
+    '/applications/create',
+    { ...input },
+    { auth: false },
+  )
+}
+
+export function listApplications(status: string = 'pending') {
+  return post<{ status: string; count: number; applications: ApplicationItem[] }>(
+    '/applications/list',
+    { status },
+  )
+}
+
+export function reviewApplication(input: {
+  applicationId: string
+  decision: 'approve' | 'reject'
+  rejectReason?: string
+}) {
+  return post<{
+    status: string
+    application?: ApplicationItem
+    tenantId?: string
+    temporaryPassword?: string
+    userId?: string
+  }>('/applications/review', { ...input })
+}
