@@ -108,3 +108,11 @@ curl -sS -X POST "$CHECK" \
 ```
 
 実AWSでは API Gateway HTTP API（`yme1o14ql5`）と Function URL の両方で 空席確認・予約確定を確認済み。ベースURLは `build/api_endpoints.json` を参照。
+
+管理画面用（Phase 3）:
+
+- `POST .../reservations/list` … 日付の予約一覧
+- `POST .../store/get` … 店舗設定取得
+- `POST .../store/update` … 店舗設定更新（店名・利用時間・営業時間・FAQ）
+
+フロントは `admin/`（`npm run dev`）。

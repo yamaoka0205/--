@@ -43,7 +43,12 @@ def _parse_body(event: dict[str, Any]) -> dict[str, Any]:
 def _response(status_code: int, payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "statusCode": status_code,
-        "headers": {"Content-Type": "application/json; charset=utf-8"},
+        "headers": {
+            "Content-Type": "application/json; charset=utf-8",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "content-type",
+            "Access-Control-Allow-Methods": "POST,OPTIONS",
+        },
         "body": json.dumps(payload, ensure_ascii=False),
     }
 
