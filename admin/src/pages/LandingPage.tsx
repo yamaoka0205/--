@@ -1,91 +1,180 @@
 import { Link } from 'react-router-dom'
 
-/** 本番台帳に寄せた画面モック */
+/**
+ * gamen/doc/restaurant-ledger-ux-review.md の R1「タイムライン台帳」に寄せた製品モック。
+ * 店内ストック写真は使わない（仕様でも写真背景はアンチパターン）。
+ */
 function LedgerScreen({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={`mk-app${compact ? ' is-compact' : ''}`} aria-hidden>
-      <div className="mk-app-top">
-        <div>
-          <strong>今日の予約</strong>
-          <span className="mk-app-store">デモ食堂さくら</span>
+    <div className={`mk-tl${compact ? ' is-compact' : ''}`} aria-hidden>
+      <header className="mk-tl-head">
+        <span className="mk-tl-home">⌂</span>
+        <strong>デモ食堂さくら</strong>
+        <div className="mk-tl-date">
+          <span>‹</span>
+          <em>11月21日（金）［今日］</em>
+          <span>›</span>
         </div>
-        <span className="mk-app-add">＋ 予約を入れる</span>
-      </div>
+        <b className="mk-tl-plus">＋</b>
+      </header>
       {!compact ? (
-        <>
-          <div className="mk-app-toolbar">
-            <span>‹</span>
-            <em>11月21日（金）</em>
-            <span>›</span>
-            <b>今日</b>
-          </div>
-          <div className="mk-app-summary">
-            <div>
-              <small>予約</small>
-              <strong>
-                4<span>組</span>
-              </strong>
-            </div>
-            <div>
-              <small>人数合計</small>
-              <strong>
-                15<span>名</span>
-              </strong>
-            </div>
-            <div>
-              <small>利用時間</small>
-              <strong>90分</strong>
-            </div>
-          </div>
-        </>
+        <div className="mk-tl-summary">
+          <span>
+            予約 <b>4</b>組 / <b>15</b>名
+          </span>
+          <span>
+            着席 <b>1</b>組
+          </span>
+          <span>
+            未配席 <b>0</b>
+          </span>
+        </div>
       ) : null}
-      <div className="mk-app-list">
-        <div className="mk-app-row">
-          <time>18:00</time>
+      <div className="mk-tl-body">
+        <aside className="mk-tl-tables">
+          <div className="mk-tl-tables-h">
+            <span>卓</span>
+            <span>定員</span>
+          </div>
+          <div className="mk-tl-trow is-wait">
+            <i />
+            <span>未配席</span>
+            <em>1</em>
+          </div>
+          <div className="mk-tl-trow">
+            <i className="c-teal" />
+            <span>卓A</span>
+            <em>4</em>
+          </div>
+          <div className="mk-tl-trow">
+            <i className="c-red" />
+            <span>卓B</span>
+            <em>2</em>
+          </div>
+          <div className="mk-tl-trow">
+            <i className="c-amber" />
+            <span>卓C</span>
+            <em>4</em>
+          </div>
+          {!compact ? (
+            <div className="mk-tl-trow">
+              <i className="c-blue" />
+              <span>卓D</span>
+              <em>6</em>
+            </div>
+          ) : null}
+        </aside>
+        <div className="mk-tl-grid">
+          <div className="mk-tl-hours">
+            <span>17:00</span>
+            <span>18:00</span>
+            <span className="is-now">18:02</span>
+            <span>19:00</span>
+            <span>20:00</span>
+            {!compact ? <span>21:00</span> : null}
+          </div>
+          <div className="mk-tl-rows">
+            <div className="mk-tl-row">
+              <div className="mk-tl-bar is-open" style={{ left: '28%', width: '22%' }}>
+                <b>2</b>
+                <div>
+                  <strong>山田</strong>
+                  <small>電話 · 未配席</small>
+                </div>
+              </div>
+            </div>
+            <div className="mk-tl-row">
+              <div className="mk-tl-bar is-booked" style={{ left: '18%', width: '34%' }}>
+                <b>4</b>
+                <div>
+                  <strong>田中</strong>
+                  <small>来店前 18:00</small>
+                </div>
+              </div>
+            </div>
+            <div className="mk-tl-row">
+              <div className="mk-tl-bar is-seated" style={{ left: '26%', width: '30%' }}>
+                <b>2</b>
+                <div>
+                  <strong>山田</strong>
+                  <small>着席 0:28</small>
+                </div>
+              </div>
+              <div className="mk-tl-buffer" style={{ left: '56%', width: '10%' }} />
+            </div>
+            <div className="mk-tl-row">
+              <div className="mk-tl-bar is-booked" style={{ left: '42%', width: '28%' }}>
+                <b>3</b>
+                <div>
+                  <strong>鈴木</strong>
+                  <small>来店前 19:00</small>
+                </div>
+              </div>
+            </div>
+            {!compact ? (
+              <div className="mk-tl-row">
+                <div className="mk-tl-bar is-booked" style={{ left: '52%', width: '32%' }}>
+                  <b>6</b>
+                  <div>
+                    <strong>佐藤</strong>
+                    <small>来店前 19:45</small>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <div className="mk-tl-now" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PainVisual({ kind }: { kind: 'phone' | 'paper' | 'shift' }) {
+  if (kind === 'phone') {
+    return (
+      <div className="mk-pain-visual" aria-hidden>
+        <div className="mk-tl is-mini">
+          <div className="mk-tl-row">
+            <div className="mk-tl-bar is-open" style={{ left: '10%', width: '70%' }}>
+              <b>2</b>
+              <div>
+                <strong>山田</strong>
+                <small>電話 → 台帳へ</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  if (kind === 'paper') {
+    return (
+      <div className="mk-pain-visual is-paper" aria-hidden>
+        <div className="mk-pain-sheet">
+          <span>紙メモ 18:00 田中?</span>
+          <span>Excel 行ずれ…</span>
+        </div>
+        <span className="mk-pain-arrow">→</span>
+        <div className="mk-tl-bar is-booked is-inline">
           <b>4</b>
           <div>
-            <strong>田中 様</strong>
-            <p>
-              <span>卓A</span>
-              <i className="is-manual">手入力</i>
-            </p>
+            <strong>田中</strong>
+            <small>同じ一覧</small>
           </div>
         </div>
-        <div className="mk-app-row">
-          <time>18:30</time>
-          <b>2</b>
-          <div>
-            <strong>山田 様</strong>
-            <p>
-              <span>卓B</span>
-              <i className="is-phone">電話</i>
-            </p>
-          </div>
-        </div>
-        <div className="mk-app-row">
-          <time>19:00</time>
-          <b>3</b>
-          <div>
-            <strong>鈴木 様</strong>
-            <p>
-              <span>卓C</span>
-              <i className="is-manual">手入力</i>
-            </p>
-          </div>
-        </div>
-        {!compact ? (
-          <div className="mk-app-row">
-            <time>19:45</time>
-            <b>6</b>
-            <div>
-              <strong>佐藤 様</strong>
-              <p>
-                <span>卓D</span>
-                <i className="is-manual">手入力</i>
-              </p>
-            </div>
-          </div>
-        ) : null}
+      </div>
+    )
+  }
+  return (
+    <div className="mk-pain-visual is-shift" aria-hidden>
+      <div className="mk-pain-shift-row">
+        <em>昼番</em>
+        <span>紙に書いて退勤</span>
+      </div>
+      <div className="mk-pain-shift-row is-night">
+        <em>夜番</em>
+        <span>開くと今夜のバーが一覧</span>
       </div>
     </div>
   )
@@ -114,12 +203,9 @@ export function LandingPage() {
       </header>
 
       <section className="mk-hero">
-        <div className="mk-hero-bg" aria-hidden>
-          <img src="/media/dining.jpg" alt="" />
-        </div>
         <div className="mk-hero-inner">
           <div className="mk-hero-copy">
-            <p className="mk-kicker">現場の声からつくった予約台帳</p>
+            <p className="mk-kicker">紙・Excel管理の小規模店から</p>
             <h1>
               電話の予約を、
               <br />
@@ -127,7 +213,7 @@ export function LandingPage() {
             </h1>
             <p className="mk-pill">飲食店向け 予約・電話管理システム</p>
             <p className="mk-hero-lead">
-              ピークの着信も、人数・時間・お名前を台帳の一行に。紙と電話のあいだを、ひとつなぎにします。
+              予約管理システム未導入の店舗向け。ピークの着信も、人数・時間・お名前をタイムライン台帳の一行に。紙と電話のあいだを、ひとつなぎにします。
             </p>
             <div className="mk-hero-actions">
               <Link to="/apply" className="mk-btn mk-btn-primary">
@@ -146,9 +232,6 @@ export function LandingPage() {
           <div className="mk-hero-visual">
             <div className="mk-device is-hero">
               <LedgerScreen />
-            </div>
-            <div className="mk-device is-phone" aria-hidden>
-              <LedgerScreen compact />
             </div>
           </div>
         </div>
@@ -172,27 +255,21 @@ export function LandingPage() {
           </h2>
           <div className="mk-pain-grid">
             <article className="mk-pain">
-              <div className="mk-pain-media">
-                <img src="/media/phone-counter.jpg" alt="" />
-              </div>
+              <PainVisual kind="phone" />
               <div className="mk-pain-body">
                 <p className="mk-pain-q">ピークの電話でホールが手薄</p>
                 <p className="mk-pain-a">着信内容を台帳へそのまま残せます</p>
               </div>
             </article>
             <article className="mk-pain">
-              <div className="mk-pain-media">
-                <img src="/media/paper-note.jpg" alt="" />
-              </div>
+              <PainVisual kind="paper" />
               <div className="mk-pain-body">
                 <p className="mk-pain-q">紙・Excelの転記ミス</p>
                 <p className="mk-pain-a">電話も手入力も同じ一覧で管理</p>
               </div>
             </article>
             <article className="mk-pain">
-              <div className="mk-pain-media">
-                <img src="/media/evening-table.jpg" alt="" />
-              </div>
+              <PainVisual kind="shift" />
               <div className="mk-pain-body">
                 <p className="mk-pain-q">シフト交代で席が引き継がれない</p>
                 <p className="mk-pain-a">開いた瞬間、今夜の予約がわかる</p>
@@ -209,14 +286,14 @@ export function LandingPage() {
           <div className="mk-feature-blocks">
             <article className="mk-feature-block">
               <div className="mk-feature-copy">
-                <h3>直感的でシンプルな予約一覧</h3>
+                <h3>タイムラインで今夜の席が一目</h3>
                 <p>
-                  時刻が大きく、人数が丸く、名前が太い。画面を見れば今夜の席がわかります。電話予約も手入力も同じ一覧です。
+                  卓×時間のグリッドに予約バーを並べます。時刻・人数・名前がバー上で読めるので、紙台帳から移っても迷いません。
                 </p>
                 <ul>
-                  <li>今日の予約を大きく表示</li>
-                  <li>電話／手入力をバッジで判別</li>
-                  <li>卓・時間帯もその場で確認</li>
+                  <li>左に卓名と定員、右に時間軸</li>
+                  <li>来店前／着席を塗り分け</li>
+                  <li>電話予約も同じバーで表示</li>
                 </ul>
               </div>
               <div className="mk-device">
@@ -235,8 +312,8 @@ export function LandingPage() {
                   <li>二重予約リスクの低減</li>
                 </ul>
               </div>
-              <div className="mk-photo-frame">
-                <img src="/media/phone-counter.jpg" alt="店舗の電話対応のイメージ" />
+              <div className="mk-device is-feature-side">
+                <LedgerScreen compact />
               </div>
             </article>
           </div>
@@ -245,9 +322,13 @@ export function LandingPage() {
 
       <section className="mk-voice">
         <div className="mk-wrap mk-voice-inner">
-          <img src="/media/evening-table.jpg" alt="" />
+          <div className="mk-voice-ui" aria-hidden>
+            <LedgerScreen compact />
+          </div>
           <blockquote>
-            <p>紙台帳と電話メモが別管理で、ピークのたびに確認が追いつかなかった。一覧が一つになると、交代の引き継ぎが楽になった。</p>
+            <p>
+              紙台帳と電話メモが別管理で、ピークのたびに確認が追いつかなかった。一覧が一つになると、交代の引き継ぎが楽になった。
+            </p>
             <cite>飲食店オーナー（導入イメージ）</cite>
           </blockquote>
         </div>
