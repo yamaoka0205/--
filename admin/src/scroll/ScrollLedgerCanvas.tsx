@@ -9,11 +9,17 @@ type Props = {
   scrollerRoot: RefObject<HTMLElement | null>
 }
 
+type Part = {
+  mesh: THREE.Object3D
+  home: THREE.Vector3
+  exploded: THREE.Vector3
+  homeRot: THREE.Euler
+  explodedRot: THREE.Euler
+}
+
 /**
- * Amazing SEIRAN 型:
- * 事前計算した複数形状を頂点シェーダで混合し、
- * スクロールタイムラインがそのまま変形の再生ヘッドになる。
- * よやく台帳向け: 嵐(着信) → 整流 → 波形(今夜) → 星座(台帳)
+ * Amazing OTOWA 型: プロダクトのコードモデリング + スクロール分解／再結合。
+ * よやく台帳向けの実物モデル = 台帳タブレット + 予約行 + 電話。
  */
 export function ScrollLedgerCanvas({ scrollerRoot }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -32,256 +38,184 @@ export function ScrollLedgerCanvas({ scrollerRoot }: Props) {
     let raf = 0
     let scrollTl: gsap.core.Timeline | null = null
     const isMobile = window.matchMedia('(max-width: 760px)').matches
+    const mount = host
 
     const canvas = document.createElement('canvas')
-    host.appendChild(canvas)
+    mount.appendChild(canvas)
 
     let renderer: THREE.WebGLRenderer
     try {
-      renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false })
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance',
+      })
     } catch {
-      host.dataset.fallback = '1'
-      host.removeChild(canvas)
+      mount.dataset.fallback = '1'
+      mount.removeChild(canvas)
       return
     }
 
-    renderer.setClearColor(0x05070d, 1)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2))
+    renderer.setClearColor(0x000000, 0)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 1.75))
+    renderer.outputColorSpace = THREE.SRGBColorSpace
 
     const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 60)
-    camera.position.set(0, 0, 8.2)
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 40)
+    camera.position.set(0.15, 0.2, 7.2)
 
-    const view = { w0: 1, w1: 0, w2: 0, w3: 0, rot: 0, px: 1.4, tilt: 0.12 }
+    scene.add(new THREE.AmbientLight(0xffffff, 0.72))
+    const key = new THREE.DirectionalLight(0xffffff, 1.2)
+    key.position.set(3.2, 4.8, 3.2)
+    const fill = new THREE.DirectionalLight(0x99f6e4, 0.55)
+    fill.position.set(-3.4, 1.2, -1.5)
+    const rim = new THREE.DirectionalLight(0xcbd5e1, 0.35)
+    rim.position.set(0.4, -2.2, -3)
+    scene.add(key, fill, rim)
 
-    const rng = (() => {
-      let s = 20261121
-      return () => {
-        s = (s * 1664525 + 1013904223) >>> 0
-        return s / 4294967296
-      }
-    })()
-    const rand = (a: number, b: number) => a + (b - a) * rng()
+    const product = new THREE.Group()
+    scene.add(product)
 
-    const N = isMobile ? 7000 : 16000
-    const p0 = new Float32Array(N * 3)
-    const p1 = new Float32Array(N * 3)
-    const p2 = new Float32Array(N * 3)
-    const p3 = new Float32Array(N * 3)
-    const seed = new Float32Array(N)
+    const white = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      metalness: 0.08,
+      roughness: 0.42,
+    })
+    const slate = new THREE.MeshStandardMaterial({
+      color: 0xe2e8f0,
+      metalness: 0.12,
+      roughness: 0.55,
+    })
+    const ink = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      metalness: 0.2,
+      roughness: 0.5,
+    })
+    const teal = new THREE.MeshStandardMaterial({
+      color: 0x0f766e,
+      metalness: 0.25,
+      roughness: 0.4,
+    })
+    const phoneBlue = new THREE.MeshStandardMaterial({
+      color: 0x1d4ed8,
+      metalness: 0.15,
+      roughness: 0.45,
+    })
 
-    // 嵐: 着信の嵐
-    for (let i = 0; i < N; i++) {
-      const u = rng()
-      const v = rng()
-      const th = u * Math.PI * 2
-      const ph = Math.acos(2 * v - 1)
-      const r = 2.5 * (0.55 + 0.45 * Math.pow(rng(), 0.6)) * (1 + 0.35 * Math.sin(th * 3 + ph * 5))
-      const sw = th + r * 0.9
-      p0[i * 3] = Math.sin(ph) * Math.cos(sw) * r
-      p0[i * 3 + 1] = Math.cos(ph) * r * 0.72
-      p0[i * 3 + 2] = Math.sin(ph) * Math.sin(sw) * r
-      seed[i] = rng()
+    // —— 台帳本体（タブレット） ——
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.55, 3.2, 0.12), white)
+    product.add(body)
+    const bezel = new THREE.Mesh(new THREE.BoxGeometry(2.62, 3.27, 0.04), slate)
+    bezel.position.z = -0.08
+    product.add(bezel)
+    const chrome = new THREE.Mesh(new THREE.BoxGeometry(2.55, 0.28, 0.02), slate)
+    chrome.position.set(0, 1.38, 0.07)
+    product.add(chrome)
+    const dotColors = [0xf87171, 0xfbbf24, 0x34d399]
+    for (let i = 0; i < 3; i++) {
+      const dot = new THREE.Mesh(
+        new THREE.CircleGeometry(0.035, 16),
+        new THREE.MeshStandardMaterial({ color: dotColors[i], roughness: 0.5 }),
+      )
+      dot.position.set(-1.05 + i * 0.12, 1.38, 0.085)
+      product.add(dot)
     }
 
-    // 整流: トーラスノット
-    for (let i = 0; i < N; i++) {
-      const t = (i / N) * Math.PI * 2 * 2
-      const pq = 3 / 2
-      const R = 1.75
-      const tube = 0.42
-      const cx = (R + 0.62 * Math.cos(pq * t)) * Math.cos(t)
-      const cy = 0.62 * Math.sin(pq * t) * 1.35
-      const cz = (R + 0.62 * Math.cos(pq * t)) * Math.sin(t)
-      const a = rng() * Math.PI * 2
-      const rr = tube * Math.sqrt(rng())
-      p1[i * 3] = cx + Math.cos(a) * rr
-      p1[i * 3 + 1] = cy + Math.sin(a) * rr * 0.9
-      p1[i * 3 + 2] = cz + Math.sin(a + 1.3) * rr
+    const parts: Part[] = []
+    function addPart(
+      mesh: THREE.Object3D,
+      home: THREE.Vector3,
+      exploded: THREE.Vector3,
+      explodedRot: THREE.Euler,
+    ) {
+      mesh.position.copy(exploded)
+      mesh.rotation.copy(explodedRot)
+      product.add(mesh)
+      parts.push({
+        mesh,
+        home,
+        exploded,
+        homeRot: new THREE.Euler(0, 0, 0),
+        explodedRot,
+      })
     }
 
-    // 波形: 今夜の予約の時間軸
-    for (let i = 0; i < N; i++) {
-      const x = rand(-4.6, 4.6)
-      const z = rand(-2.4, 2.4)
-      const layer = i % 2
-      const y =
-        Math.sin(x * 1.5 + z * 0.8) * 0.55 +
-        Math.sin(x * 3.1 - z * 1.7) * 0.28 +
-        (layer ? 0.85 : -0.85)
-      p2[i * 3] = x
-      p2[i * 3 + 1] = y
-      p2[i * 3 + 2] = z
-    }
-
-    // 星座: 台帳の行として結ばれた予約
-    const HUBS = 22
-    const hubs: THREE.Vector3[] = []
-    for (let h = 0; h < HUBS; h++) {
-      const u = rng()
-      const v = rng()
-      const th = u * Math.PI * 2
-      const ph = Math.acos(2 * v - 1)
-      const r = rand(1.5, 2.6)
-      hubs.push(
-        new THREE.Vector3(
-          Math.sin(ph) * Math.cos(th) * r,
-          Math.cos(ph) * r * 0.8,
-          Math.sin(ph) * Math.sin(th) * r,
-        ),
+    // —— 予約行（分解パーツ） ——
+    const rowMats = [
+      new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.04, roughness: 0.65 }),
+      new THREE.MeshStandardMaterial({ color: 0xdbeafe, metalness: 0.04, roughness: 0.55 }),
+      new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.04, roughness: 0.65 }),
+      new THREE.MeshStandardMaterial({ color: 0xccfbf1, metalness: 0.04, roughness: 0.6 }),
+    ]
+    const rowExplode = [
+      new THREE.Vector3(-1.85, 1.55, 1.1),
+      new THREE.Vector3(2.05, 0.95, 1.35),
+      new THREE.Vector3(-1.55, -0.75, 1.25),
+      new THREE.Vector3(1.75, -1.45, 0.95),
+    ]
+    for (let i = 0; i < 4; i++) {
+      const row = new THREE.Group()
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.38, 0.05), rowMats[i])
+      row.add(plate)
+      const timeChip = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.03), ink)
+      timeChip.position.set(-0.72, 0, 0.04)
+      row.add(timeChip)
+      const count = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.04, 20), teal)
+      count.rotation.x = Math.PI / 2
+      count.position.set(-0.28, 0, 0.04)
+      row.add(count)
+      addPart(
+        row,
+        new THREE.Vector3(0, 0.85 - i * 0.52, 0.1),
+        rowExplode[i],
+        new THREE.Euler((Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 1.1, (Math.random() - 0.5) * 0.5),
       )
     }
-    for (let i = 0; i < N; i++) {
-      const hub = hubs[i % HUBS]
-      const spread = rng() < 0.12 ? 0.9 : 0.28
-      p3[i * 3] = hub.x + rand(-spread, spread)
-      p3[i * 3 + 1] = hub.y + rand(-spread, spread)
-      p3[i * 3 + 2] = hub.z + rand(-spread, spread)
-    }
 
-    const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(p0, 3))
-    geo.setAttribute('aP0', new THREE.BufferAttribute(p0, 3))
-    geo.setAttribute('aP1', new THREE.BufferAttribute(p1, 3))
-    geo.setAttribute('aP2', new THREE.BufferAttribute(p2, 3))
-    geo.setAttribute('aP3', new THREE.BufferAttribute(p3, 3))
-    geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1))
-
-    const uniforms = {
-      uTime: { value: 0 },
-      uW: { value: new THREE.Vector4(1, 0, 0, 0) },
-      uSize: { value: (isMobile ? 5.0 : 6.2) * renderer.getPixelRatio() },
-      uColStorm: { value: new THREE.Color(0x2dd4bf) },
-      uColKnot: { value: new THREE.Color(0x5eead4) },
-      uColWave: { value: new THREE.Color(0x7dd3fc) },
-      uColNet: { value: new THREE.Color(0xf0d89a) },
-    }
-
-    const points = new THREE.Points(
-      geo,
-      new THREE.ShaderMaterial({
-        uniforms,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        vertexShader: /* glsl */ `
-          attribute vec3 aP0, aP1, aP2, aP3;
-          attribute float aSeed;
-          uniform float uTime, uSize;
-          uniform vec4 uW;
-          varying float vSeed;
-          varying vec4 vW;
-          void main() {
-            vSeed = aSeed;
-            vW = uW;
-            vec3 pos = aP0 * uW.x + aP1 * uW.y + aP2 * uW.z + aP3 * uW.w;
-            float amp = 0.05 + 0.11 * uW.x + 0.03 * uW.z;
-            pos += amp * vec3(
-              sin(uTime * 0.8 + pos.y * 2.1 + aSeed * 6.28),
-              sin(uTime * 0.7 + pos.z * 1.7 + aSeed * 4.2),
-              sin(uTime * 0.9 + pos.x * 1.9 + aSeed * 2.6)
-            );
-            pos.x += uW.z * sin(uTime * 0.5 + aSeed * 6.28) * 0.14;
-            vec4 mv = modelViewMatrix * vec4(pos, 1.0);
-            float tw = 0.75 + 0.45 * sin(uTime * 1.6 + aSeed * 6.28);
-            gl_PointSize = uSize * tw * (3.4 / -mv.z);
-            gl_Position = projectionMatrix * mv;
-          }
-        `,
-        fragmentShader: /* glsl */ `
-          precision mediump float;
-          uniform vec3 uColStorm, uColKnot, uColWave, uColNet;
-          varying float vSeed;
-          varying vec4 vW;
-          void main() {
-            vec2 c = gl_PointCoord - 0.5;
-            float d = length(c);
-            float alpha = smoothstep(0.5, 0.06, d);
-            float wsum = max(vW.x + vW.y + vW.z + vW.w, 0.001);
-            vec3 col = (uColStorm * vW.x + uColKnot * vW.y + uColWave * vW.z + uColNet * vW.w) / wsum;
-            col = mix(col, vec3(1.0), step(0.93, vSeed) * 0.75);
-            gl_FragColor = vec4(col, alpha * 0.75);
-          }
-        `,
-      }),
+    // —— 電話（着信元） ——
+    const phone = new THREE.Group()
+    const phoneBody = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.05, 0.08), ink)
+    phone.add(phoneBody)
+    const phoneScreen = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.78, 0.02), phoneBlue)
+    phoneScreen.position.z = 0.05
+    phone.add(phoneScreen)
+    const phoneEar = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 0.02), slate)
+    phoneEar.position.set(0, 0.42, 0.05)
+    phone.add(phoneEar)
+    addPart(
+      phone,
+      new THREE.Vector3(-1.85, 0.15, 0.55),
+      new THREE.Vector3(-2.8, 1.6, 1.8),
+      new THREE.Euler(0.55, -0.8, 0.35),
     )
 
-    const cloud = new THREE.Group()
-    cloud.add(points)
-    scene.add(cloud)
-
-    const linePos: number[] = []
-    for (let i = 0; i < HUBS; i++) {
-      const dists = hubs
-        .map((h, j) => ({ j, d: hubs[i].distanceTo(h) }))
-        .filter((o) => o.j !== i)
-        .sort((a, b) => a.d - b.d)
-      for (let k = 0; k < 2; k++) {
-        const o = hubs[dists[k].j]
-        linePos.push(hubs[i].x, hubs[i].y, hubs[i].z, o.x, o.y, o.z)
-      }
-    }
-    const lg = new THREE.BufferGeometry()
-    lg.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3))
-    const netLines = new THREE.LineSegments(
-      lg,
-      new THREE.LineBasicMaterial({
-        color: 0xf0d89a,
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
-    )
-    cloud.add(netLines)
-
-    const glowTex = (() => {
-      const c = document.createElement('canvas')
-      c.width = c.height = 128
-      const ctx = c.getContext('2d')!
-      const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
-      g.addColorStop(0, 'rgba(255,255,255,1)')
-      g.addColorStop(0.4, 'rgba(255,255,255,.35)')
-      g.addColorStop(1, 'rgba(255,255,255,0)')
-      ctx.fillStyle = g
-      ctx.fillRect(0, 0, 128, 128)
-      const tex = new THREE.CanvasTexture(c)
-      tex.colorSpace = THREE.SRGBColorSpace
-      return tex
-    })()
-
-    const core = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: glowTex,
-        color: 0x2dd4bf,
-        transparent: true,
-        opacity: 0.22,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
-    )
-    core.scale.setScalar(5.5)
-    cloud.add(core)
-
-    function addHaze(color: number, x: number, y: number, z: number, scale: number, opacity: number) {
-      const sp = new THREE.Sprite(
-        new THREE.SpriteMaterial({
-          map: glowTex,
-          color,
+    // —— 着信リング（薄い円、電話まわり） ——
+    const rings: THREE.Mesh[] = []
+    for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.55 + i * 0.22, 0.012, 8, 48),
+        new THREE.MeshStandardMaterial({
+          color: 0x2dd4bf,
           transparent: true,
-          opacity,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
+          opacity: 0.35 - i * 0.08,
+          metalness: 0.1,
+          roughness: 0.4,
         }),
       )
-      sp.position.set(x, y, z)
-      sp.scale.setScalar(scale)
-      scene.add(sp)
+      ring.rotation.x = Math.PI / 2.4
+      product.add(ring)
+      rings.push(ring)
     }
-    addHaze(0x0f766e, -5, 3, -9, 20, 0.14)
-    addHaze(0x5eead4, 6, -3, -10, 16, 0.08)
 
-    const mount = host
+    const view = {
+      assemble: 0,
+      settle: 0,
+      phoneIn: 0,
+      orbit: 0,
+      zoom: 0,
+    }
+
     function resize() {
       const w = mount.clientWidth || window.innerWidth
       const h = mount.clientHeight || window.innerHeight
@@ -298,28 +232,25 @@ export function ScrollLedgerCanvas({ scrollerRoot }: Props) {
         trigger: root,
         start: 'top top',
         end: 'bottom bottom',
-        scrub: 0.8,
+        scrub: 0.75,
       },
     })
+    // ヒーロー: 分解された状態で見せる → スクロールで台帳に組み上がる
     scrollTl
-      .to(view, { rot: 0.5, px: 1.4, duration: 0.12 }, 0)
-      .to(view, { rot: 1.1, px: 0, duration: 0.19 }, 0.12)
-      .to(view, { w0: 0, w1: 1, rot: 1.9, duration: 0.14 }, 0.31)
-      .to(view, { rot: 2.4, duration: 0.05 }, 0.45)
-      .to(view, { w1: 0, w2: 1, rot: 2.9, tilt: 0.5, duration: 0.13 }, 0.5)
-      .to(view, { rot: 3.2, duration: 0.05 }, 0.63)
-      .to(view, { w2: 0, w3: 1, rot: 3.9, px: -1.2, tilt: 0.12, duration: 0.14 }, 0.68)
-      .to(view, { rot: 4.3, duration: 0.04 }, 0.82)
-      .to(view, { w3: 0.55, w0: 0.45, px: 0, rot: 5.0, duration: 0.14 }, 0.86)
+      .to(view, { phoneIn: 1, duration: 0.18 }, 0)
+      .to(view, { assemble: 1, duration: 0.28 }, 0.16)
+      .to(view, { settle: 1, orbit: 0.35, duration: 0.2 }, 0.42)
+      .to(view, { zoom: 1, orbit: 0.7, duration: 0.22 }, 0.62)
+      .to(view, { orbit: 1, duration: 0.16 }, 0.84)
 
     root.querySelectorAll('[data-reveal]').forEach((el) => {
       gsap.fromTo(
         el,
-        { opacity: 0, y: 28 },
+        { opacity: 0, y: 24 },
         {
           opacity: 1,
           y: 0,
-          duration: 1.05,
+          duration: 1,
           ease: 'power3.out',
           scrollTrigger: { trigger: el, start: 'top 86%', once: true },
         },
@@ -331,14 +262,45 @@ export function ScrollLedgerCanvas({ scrollerRoot }: Props) {
       if (disposed) return
       raf = requestAnimationFrame(frame)
       if (document.hidden) return
+
       const t = clock.getElapsedTime()
-      uniforms.uTime.value = t
-      uniforms.uW.value.set(view.w0, view.w1, view.w2, view.w3)
-      cloud.rotation.y = view.rot + t * 0.03
-      cloud.rotation.x = view.tilt + Math.sin(t * 0.2) * 0.02
-      cloud.position.x = view.px
-      ;(netLines.material as THREE.LineBasicMaterial).opacity = view.w3 * 0.5
-      core.material.opacity = 0.1 + view.w0 * 0.14
+      const a = view.assemble
+      const s = view.settle
+
+      parts.forEach((part, i) => {
+        // 電話は少し遅れて近づく
+        const local = i === parts.length - 1 ? Math.min(1, a * 0.85 + view.phoneIn * 0.35) : a
+        part.mesh.position.lerpVectors(part.exploded, part.home, local)
+        part.mesh.rotation.x = THREE.MathUtils.lerp(part.explodedRot.x, part.homeRot.x, local)
+        part.mesh.rotation.y = THREE.MathUtils.lerp(part.explodedRot.y, part.homeRot.y, local)
+        part.mesh.rotation.z = THREE.MathUtils.lerp(part.explodedRot.z, part.homeRot.z, local)
+      })
+
+      // 電話の着信リングは組み立て前〜電話接近時に強く
+      const ringStrength = (1 - a) * 0.55 + view.phoneIn * (1 - s) * 0.45
+      rings.forEach((ring, i) => {
+        const mat = ring.material as THREE.MeshStandardMaterial
+        mat.opacity = Math.max(0, ringStrength * (0.4 - i * 0.1))
+        ring.visible = mat.opacity > 0.02
+        const phonePart = parts[parts.length - 1]
+        ring.position.copy(phonePart.mesh.position)
+        ring.scale.setScalar(1 + i * 0.08 + Math.sin(t * 2.2 + i) * 0.04)
+        ring.rotation.z = t * (0.4 + i * 0.15)
+      })
+
+      product.rotation.y =
+        THREE.MathUtils.lerp(-0.55, -0.22, a) +
+        view.orbit * 0.55 +
+        Math.sin(t * 0.35) * 0.025
+      product.rotation.x = THREE.MathUtils.lerp(0.38, 0.1, a) - view.zoom * 0.05
+      product.position.x = isMobile
+        ? THREE.MathUtils.lerp(0.05, 0.1, s)
+        : THREE.MathUtils.lerp(1.15, 1.35, s)
+      product.position.y = (isMobile ? -0.55 : 0.05) + Math.sin(t * 0.45) * 0.03
+      product.scale.setScalar((isMobile ? 0.78 : 0.98) + s * 0.08 + view.zoom * 0.06)
+
+      camera.position.z = THREE.MathUtils.lerp(7.4, 5.6, a * 0.7 + view.zoom * 0.3)
+      camera.lookAt(isMobile ? 0.05 : 0.9, isMobile ? -0.35 : 0.05, 0)
       renderer.render(scene, camera)
     }
     frame()
@@ -350,11 +312,14 @@ export function ScrollLedgerCanvas({ scrollerRoot }: Props) {
       scrollTl?.scrollTrigger?.kill()
       scrollTl?.kill()
       ScrollTrigger.getAll().forEach((st) => st.kill())
-      geo.dispose()
-      ;(points.material as THREE.Material).dispose()
-      lg.dispose()
-      ;(netLines.material as THREE.Material).dispose()
-      glowTex.dispose()
+      product.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry.dispose()
+          const mat = obj.material
+          if (Array.isArray(mat)) mat.forEach((m) => m.dispose())
+          else mat.dispose()
+        }
+      })
       renderer.dispose()
       if (canvas.parentElement === mount) mount.removeChild(canvas)
     }

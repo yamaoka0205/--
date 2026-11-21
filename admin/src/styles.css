@@ -820,7 +820,8 @@ button {
 
 .sx-canvas[data-fallback='1'] {
   background:
-    radial-gradient(circle at 60% 40%, rgba(45, 212, 191, 0.22), transparent 45%),
+    radial-gradient(circle at 68% 42%, rgba(248, 250, 252, 0.18), transparent 38%),
+    radial-gradient(circle at 72% 48%, rgba(45, 212, 191, 0.16), transparent 42%),
     #05070d;
 }
 

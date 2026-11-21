@@ -38,11 +38,11 @@ export function LandingPage() {
           <div className="sx-hero-inner" data-reveal>
             <p className="sx-eyebrow">飲食店向け · AI電話予約</p>
             <h1>
-              電話の嵐を、<br />
-              <em>台帳</em>に。
+              電話の予約を、<br />
+              <em>台帳</em>にそのまま。
             </h1>
             <p className="sx-lead">
-              ピーク時の着信をAIが受け、人数・時間・お名前を一行に載せる。散らばる予約を、今夜の席の形に。
+              ピーク時の着信をAIが受け、人数・時間・お名前を台帳の一行に載せます。スクロールすると、ばらけた予約行と電話が台帳に組み上がります。
             </p>
             <dl className="sx-status">
               <div>
@@ -51,9 +51,7 @@ export function LandingPage() {
               </div>
               <div>
                 <dt>CHANNEL</dt>
-                <dd>
-                  電話 + 店内
-                </dd>
+                <dd>電話 + 店内</dd>
               </div>
               <div>
                 <dt>LEDGER</dt>
@@ -66,7 +64,7 @@ export function LandingPage() {
             </dl>
           </div>
           <p className="sx-scroll-cue" aria-hidden>
-            SCROLL — 嵐を整える
+            SCROLL — 台帳を組み立てる
           </p>
         </section>
 
