@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "sources": ["../../../workers/spa.js"],
+  "sourceRoot": "/agent/repos/aidenwa_yoyaku/admin/.wrangler/tmp/deploy-GW9VSu",
+  "sourcesContent": ["export default {\n  async fetch(request, env) {\n    return env.ASSETS.fetch(request)\n  },\n}\n"],
+  "mappings": ";AAAA,IAAO,cAAQ;AAAA,EACb,MAAM,MAAM,SAAS,KAAK;AACxB,WAAO,IAAI,OAAO,MAAM,OAAO;AAAA,EACjC;AACF;",
+  "names": []
+}

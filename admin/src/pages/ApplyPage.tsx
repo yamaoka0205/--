@@ -40,42 +40,42 @@ export function ApplyPage() {
   }
 
   return (
-    <div className="apply-site">
-      <header className="apply-top">
-        <Link to="/" className="site-logo is-dark">
+    <div className="signup">
+      <header className="signup-header">
+        <Link to="/" className="lp-logo">
           よやく台帳
         </Link>
-        <Link to="/login" className="apply-login">
-          ログイン
+        <Link to="/login" className="signup-login">
+          すでにアカウントをお持ちの方はログイン
         </Link>
       </header>
 
-      <main className="apply-shell">
-        <aside className="apply-side">
-          <p className="site-eyebrow">店舗申し込み</p>
-          <h1>よやく台帳を使い始める</h1>
+      <main className="signup-main">
+        <div className="signup-intro">
+          <p className="lp-kicker">店舗申し込み</p>
+          <h1>よやく台帳を無料で申し込む</h1>
           <p>
             送信内容を運営者が確認し、問題なければアカウントを発行します。承認後、登録メールでログインできます。
           </p>
           <ul>
+            <li>クレジットカード登録は不要</li>
             <li>初期設定の台帳・席・営業時間が入ります</li>
             <li>電話予約と手入力を同じ一覧で管理</li>
-            <li>承認制なので、店舗情報の確認後に開始</li>
           </ul>
-        </aside>
+        </div>
 
         {doneId ? (
-          <div className="apply-card" role="status">
+          <div className="signup-card" role="status">
             <h2>受け付けました</h2>
             <p>承認後、メールアドレスでログインできます。</p>
             <p className="muted-note">受付番号: {doneId}</p>
-            <Link to="/" className="btn btn-primary">
-              トップへ
+            <Link to="/" className="btn btn-primary" style={{ width: '100%' }}>
+              トップへ戻る
             </Link>
           </div>
         ) : (
-          <form className="apply-card" onSubmit={onSubmit}>
-            <h2>必要事項</h2>
+          <form className="signup-card" onSubmit={onSubmit}>
+            <h2>必要事項の入力</h2>
             {error ? <div className="alert alert-error">{error}</div> : null}
 
             <div className="field">
@@ -128,9 +128,10 @@ export function ApplyPage() {
               />
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
+            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={submitting}>
               {submitting ? '送信中…' : '申し込む'}
             </button>
+            <p className="signup-note">送信後、運営者の承認をお待ちください。自動課金はありません。</p>
           </form>
         )}
       </main>
