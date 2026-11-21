@@ -1,4 +1,5 @@
 import type { ListReservationsResponse, Store, StoreFaq, StoreHours } from './types'
+import { PRODUCTION_API_BASE } from './deployConfig'
 
 const TOKEN_KEY = 'bookingapp.accessToken'
 
@@ -25,10 +26,8 @@ export type AuthSession = {
 function baseUrl(): string {
   if (import.meta.env.DEV) return '/api'
   const fromEnv = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '')
-  if (!fromEnv) {
-    throw new Error('VITE_API_BASE_URL is required for production builds')
-  }
-  return fromEnv
+  if (fromEnv) return fromEnv
+  return PRODUCTION_API_BASE
 }
 
 async function post<T>(
