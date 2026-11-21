@@ -37,14 +37,9 @@ export function OperatorLoginPage() {
   }
 
   return (
-    <div className="public-shell public-narrow">
-      <header className="public-top">
-        <Link to="/" className="public-logo">
-          よやく台帳
-        </Link>
-      </header>
-      <form className="public-panel" onSubmit={onSubmit}>
-        <p className="login-eyebrow">運営者</p>
+    <div className="login-page">
+      <form className="login-card" onSubmit={onSubmit}>
+        <p className="login-eyebrow">運営者 · よやく台帳</p>
         <h1>運営ログイン</h1>
         <p className="login-lead">店舗申し込みの承認・却下を行います。</p>
 
@@ -85,6 +80,10 @@ export function OperatorLoginPage() {
             パスワード <code>Demo-pass-2026!</code>
           </p>
         </details>
+
+        <p className="login-links">
+          <Link to="/">紹介ページ</Link>
+        </p>
       </form>
     </div>
   )

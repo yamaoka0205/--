@@ -65,7 +65,7 @@ export function OperatorPage({ onToast }: { onToast: (message: string) => void }
     <div className="operator-shell">
       <header className="operator-top">
         <div>
-          <Link to="/" className="public-logo">
+          <Link to="/" className="operator-brand">
             よやく台帳
           </Link>
           <p className="operator-sub">申し込み承認</p>
