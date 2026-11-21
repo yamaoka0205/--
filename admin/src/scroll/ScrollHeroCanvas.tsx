@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import Lenis from 'lenis'
 import * as THREE from 'three'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -10,36 +11,14 @@ type Props = {
   mode?: 'story' | 'ambient'
 }
 
-const STILLS = [
-  '/media/dining.jpg',
-  '/media/phone-counter.jpg',
-  '/media/evening-table.jpg',
-]
-
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function loadTexture(url: string): Promise<THREE.Texture> {
-  return new Promise((resolve, reject) => {
-    const loader = new THREE.TextureLoader()
-    loader.load(
-      url,
-      (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace
-        tex.minFilter = THREE.LinearFilter
-        tex.magFilter = THREE.LinearFilter
-        resolve(tex)
-      },
-      undefined,
-      reject,
-    )
-  })
-}
-
 /**
- * 実写プレートをスクロールでクロスフェードするシネマティック背景。
- * 箱電話などのデモ形状は使わない。
+ * Oryzo / The Watch 型: 固定キャンバス + 主役オブジェクト1つ。
+ * スクロール進捗で「着信の粒 → 台帳スラブ」へ遷移する。
+ * 明るい SaaS LP 向けに右側配置・淡色ライティング。
  */
 export function ScrollHeroCanvas({ scrollerRoot, mode = 'story' }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -57,9 +36,9 @@ export function ScrollHeroCanvas({ scrollerRoot, mode = 'story' }: Props) {
     let disposed = false
     let raf = 0
     let trigger: ScrollTrigger | null = null
+    let lenis: Lenis | null = null
     const progress = { value: mode === 'ambient' ? 0.35 : 0 }
-    const disposables: THREE.Object3D[] = []
-    const textures: THREE.Texture[] = []
+    const smooth = { value: mode === 'ambient' ? 0.35 : 0 }
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -72,67 +51,80 @@ export function ScrollHeroCanvas({ scrollerRoot, mode = 'story' }: Props) {
     host.appendChild(renderer.domElement)
 
     const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 40)
-    camera.position.set(0, 0, 5.2)
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 40)
+    camera.position.set(0.1, 0.15, 5.2)
 
-    const planes: THREE.Mesh[] = []
-    const mats: THREE.MeshBasicMaterial[] = []
+    scene.add(new THREE.AmbientLight(0xffffff, 0.85))
+    const key = new THREE.DirectionalLight(0xffffff, 1.05)
+    key.position.set(2.4, 4.2, 3.2)
+    const fill = new THREE.DirectionalLight(0x99f6e4, 0.55)
+    fill.position.set(-2.8, 1.4, -1.2)
+    const rim = new THREE.DirectionalLight(0xcbd5e1, 0.35)
+    rim.position.set(0.5, -2, -3)
+    scene.add(key, fill, rim)
 
-    let dust: THREE.Points | null = null
-    let dustAttr: THREE.BufferAttribute | null = null
-    const dustSeeds = new Float32Array(180)
+    const hero = new THREE.Group()
+    scene.add(hero)
 
-    ;(async () => {
-      try {
-        const loaded = await Promise.all(STILLS.map((u) => loadTexture(u)))
-        if (disposed) {
-          loaded.forEach((t) => t.dispose())
-          return
-        }
-        textures.push(...loaded)
+    const slab = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2, 2.75, 0.07, 1, 1, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        metalness: 0.04,
+        roughness: 0.42,
+      }),
+    )
+    hero.add(slab)
 
-        loaded.forEach((tex, i) => {
-          const aspect = (tex.image as HTMLImageElement).width / (tex.image as HTMLImageElement).height
-          const h = 3.55
-          const w = h * aspect
-          const mat = new THREE.MeshBasicMaterial({
-            map: tex,
-            transparent: true,
-            opacity: i === 0 ? 1 : 0,
-            depthWrite: false,
-          })
-          const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat)
-          mesh.position.z = -i * 0.08
-          scene.add(mesh)
-          planes.push(mesh)
-          mats.push(mat)
-          disposables.push(mesh)
-        })
+    const edge = new THREE.Mesh(
+      new THREE.BoxGeometry(2.22, 2.77, 0.02),
+      new THREE.MeshStandardMaterial({
+        color: 0xe2e8f0,
+        metalness: 0.1,
+        roughness: 0.6,
+      }),
+    )
+    edge.position.z = -0.045
+    hero.add(edge)
 
-        const dustPos = new Float32Array(180 * 3)
-        for (let i = 0; i < 180; i++) {
-          dustPos[i * 3] = (Math.random() - 0.5) * 6
-          dustPos[i * 3 + 1] = (Math.random() - 0.5) * 4
-          dustPos[i * 3 + 2] = Math.random() * 1.5
-          dustSeeds[i] = Math.random()
-        }
-        const geo = new THREE.BufferGeometry()
-        dustAttr = new THREE.BufferAttribute(dustPos, 3)
-        geo.setAttribute('position', dustAttr)
-        const pmat = new THREE.PointsMaterial({
-          color: 0xfff7ed,
-          size: 0.012,
-          transparent: true,
-          opacity: 0.22,
-          depthWrite: false,
-          sizeAttenuation: true,
-        })
-        dust = new THREE.Points(geo, pmat)
-        scene.add(dust)
-      } catch {
-        if (!disposed) host.dataset.fallback = '1'
-      }
-    })()
+    const rows: THREE.Mesh[] = []
+    const rowColors = [0xf1f5f9, 0xdbeafe, 0xf1f5f9, 0xccfbf1]
+    for (let i = 0; i < 4; i++) {
+      const row = new THREE.Mesh(
+        new THREE.BoxGeometry(1.82, 0.26, 0.03),
+        new THREE.MeshStandardMaterial({
+          color: rowColors[i],
+          metalness: 0.02,
+          roughness: 0.72,
+        }),
+      )
+      row.position.set(0, 0.78 - i * 0.44, 0.055)
+      hero.add(row)
+      rows.push(row)
+    }
+
+    const COUNT = 220
+    const positions = new Float32Array(COUNT * 3)
+    const seeds = new Float32Array(COUNT)
+    for (let i = 0; i < COUNT; i++) {
+      seeds[i] = Math.random()
+      const a = (i / COUNT) * Math.PI * 2
+      positions[i * 3] = Math.cos(a) * 0.85
+      positions[i * 3 + 1] = (seeds[i] - 0.5) * 0.35
+      positions[i * 3 + 2] = Math.sin(a) * 0.85
+    }
+    const pGeo = new THREE.BufferGeometry()
+    pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const pMat = new THREE.PointsMaterial({
+      color: 0x0f766e,
+      size: 0.026,
+      transparent: true,
+      opacity: 0.65,
+      depthWrite: false,
+      sizeAttenuation: true,
+    })
+    const points = new THREE.Points(pGeo, pMat)
+    scene.add(points)
 
     const mount = host
     function resize() {
@@ -146,11 +138,17 @@ export function ScrollHeroCanvas({ scrollerRoot, mode = 'story' }: Props) {
     window.addEventListener('resize', resize)
 
     if (mode === 'story') {
+      lenis = new Lenis({
+        duration: 1.2,
+        smoothWheel: true,
+        autoRaf: false,
+      })
+      lenis.on('scroll', ScrollTrigger.update)
       trigger = ScrollTrigger.create({
         trigger: root,
         start: 'top top',
         end: 'bottom bottom',
-        scrub: 0.8,
+        scrub: false,
         onUpdate: (self) => {
           progress.value = self.progress
         },
@@ -158,51 +156,59 @@ export function ScrollHeroCanvas({ scrollerRoot, mode = 'story' }: Props) {
     }
 
     const clock = new THREE.Clock()
+    const posAttr = pGeo.getAttribute('position') as THREE.BufferAttribute
+    const mobile = () => window.matchMedia('(max-width: 860px)').matches
 
-    function frame() {
+    function frame(timeMs = 0) {
       if (disposed) return
       raf = requestAnimationFrame(frame)
       if (document.hidden) return
 
+      if (lenis) lenis.raf(timeMs)
+
       const t = clock.getElapsedTime()
-      let p = progress.value
-      if (mode === 'ambient') {
-        p = 0.28 + Math.sin(t * 0.12) * 0.08
+      const target = mode === 'ambient' ? 0.28 + Math.sin(t * 0.2) * 0.04 : progress.value
+      smooth.value += (target - smooth.value) * 0.05
+      const p = smooth.value
+
+      const ringPhase = 1 - THREE.MathUtils.smoothstep(p, 0.12, 0.48)
+      const slabPhase = THREE.MathUtils.smoothstep(p, 0.16, 0.62)
+      const isMobile = mobile()
+
+      pMat.opacity = 0.12 + ringPhase * 0.58
+      points.visible = ringPhase > 0.05
+      for (let i = 0; i < COUNT; i++) {
+        const a = t * (0.4 + seeds[i] * 0.32) + i * 0.12
+        const r = (0.5 + seeds[i] * 0.8) * (0.5 + ringPhase * 1.05)
+        posAttr.setXYZ(i, Math.cos(a) * r, Math.sin(a * 1.55) * 0.26 * ringPhase, Math.sin(a) * r)
       }
+      posAttr.needsUpdate = true
+      points.position.set(
+        THREE.MathUtils.lerp(isMobile ? 0.15 : 1.05, isMobile ? 0 : 0.55, slabPhase),
+        isMobile ? -0.55 : 0.08,
+        THREE.MathUtils.lerp(0.35, -0.15, slabPhase),
+      )
 
-      // 3枚を滑らかにクロスフェード
-      if (mats.length === 3) {
-        const stops = [0, 0.42, 0.78]
-        mats.forEach((m, i) => {
-          const center = stops[i]
-          const dist = Math.abs(p - center)
-          const next = stops[i + 1] ?? 1.2
-          const prev = stops[i - 1] ?? -0.2
-          const span = Math.max(next - center, center - prev)
-          m.opacity = THREE.MathUtils.clamp(1 - dist / (span * 0.95), 0, 1)
-        })
-        planes.forEach((mesh, i) => {
-          const drift = (p - i * 0.35) * 0.35
-          mesh.position.x = Math.sin(t * 0.08 + i) * 0.04 + drift * 0.15
-          mesh.position.y = Math.cos(t * 0.07 + i * 0.5) * 0.03
-          mesh.scale.setScalar(1.02 + p * 0.06 + i * 0.01)
-        })
-      }
+      hero.rotation.y = THREE.MathUtils.lerp(-0.48, -0.22, slabPhase) + Math.sin(t * 0.32) * 0.025
+      hero.rotation.x = THREE.MathUtils.lerp(0.36, 0.1, slabPhase)
+      hero.position.x = isMobile
+        ? THREE.MathUtils.lerp(0.05, 0.1, p)
+        : THREE.MathUtils.lerp(1.05, 1.25, p)
+      hero.position.y = (isMobile ? -0.65 : 0.05) + Math.sin(t * 0.5) * 0.035
+      hero.scale.setScalar((isMobile ? 0.72 : 0.88) + slabPhase * 0.22)
+      ;(slab.material as THREE.MeshStandardMaterial).opacity = 0.35 + slabPhase * 0.65
+      ;(slab.material as THREE.MeshStandardMaterial).transparent = true
+      ;(edge.material as THREE.MeshStandardMaterial).opacity = 0.25 + slabPhase * 0.7
+      ;(edge.material as THREE.MeshStandardMaterial).transparent = true
+      rows.forEach((row, i) => {
+        const mat = row.material as THREE.MeshStandardMaterial
+        mat.transparent = true
+        mat.opacity = THREE.MathUtils.clamp(slabPhase * 1.35 - i * 0.1, 0, 1)
+        row.position.z = 0.055 + (1 - mat.opacity) * -0.18
+      })
 
-      camera.position.x = Math.sin(t * 0.05) * 0.05 + p * 0.12
-      camera.position.y = 0.02 + Math.sin(t * 0.07) * 0.03
-      camera.position.z = THREE.MathUtils.lerp(5.15, 4.55, p)
-      camera.lookAt(0, 0, 0)
-
-      if (dust && dustAttr) {
-        for (let i = 0; i < 180; i++) {
-          const y = dustAttr.getY(i) + 0.0012 + dustSeeds[i] * 0.001
-          dustAttr.setY(i, y > 2.2 ? -2.2 : y)
-        }
-        dustAttr.needsUpdate = true
-        dust.rotation.z = t * 0.01
-      }
-
+      camera.position.z = THREE.MathUtils.lerp(5.3, 4.6, p)
+      camera.lookAt(isMobile ? 0.05 : 0.7, isMobile ? -0.4 : 0.02, 0)
       renderer.render(scene, camera)
     }
     frame()
@@ -212,22 +218,19 @@ export function ScrollHeroCanvas({ scrollerRoot, mode = 'story' }: Props) {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', resize)
       trigger?.kill()
-      disposables.forEach((obj) => {
-        const mesh = obj as THREE.Mesh
-        mesh.geometry?.dispose()
-        const mat = mesh.material
-        if (Array.isArray(mat)) mat.forEach((m) => m.dispose())
-        else (mat as THREE.Material | undefined)?.dispose()
+      lenis?.destroy()
+      pGeo.dispose()
+      pMat.dispose()
+      slab.geometry.dispose()
+      ;(slab.material as THREE.Material).dispose()
+      edge.geometry.dispose()
+      ;(edge.material as THREE.Material).dispose()
+      rows.forEach((r) => {
+        r.geometry.dispose()
+        ;(r.material as THREE.Material).dispose()
       })
-      textures.forEach((t) => t.dispose())
-      if (dust) {
-        dust.geometry.dispose()
-        ;(dust.material as THREE.Material).dispose()
-      }
       renderer.dispose()
-      if (renderer.domElement.parentElement === mount) {
-        mount.removeChild(renderer.domElement)
-      }
+      if (renderer.domElement.parentElement === mount) mount.removeChild(renderer.domElement)
     }
   }, [scrollerRoot, mode])
 

@@ -31,9 +31,9 @@ function LedgerProof() {
           <i>店内</i>
         </div>
         <div className="proof-row">
-          <time>19:30</time>
-          <b>5</b>
-          <span>佐藤 様</span>
+          <time>19:45</time>
+          <b>6</b>
+          <span>宴会 · 佐藤</span>
           <i>店内</i>
         </div>
       </div>
@@ -45,77 +45,98 @@ export function LandingPage() {
   const rootRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div className="story" ref={rootRef}>
-      <ScrollStage scrollerRoot={rootRef} mode="story" />
+    <div className="site" ref={rootRef}>
+      <ScrollStage scrollerRoot={rootRef} mode="story" className="site-stage" />
 
-      <header className="story-top">
-        <Link to="/" className="story-logo">
+      <header className="site-top">
+        <Link to="/" className="site-logo">
           よやく台帳
         </Link>
-        <nav className="story-nav">
+        <nav className="site-nav">
+          <a href="#problem">課題</a>
+          <a href="#product">画面</a>
           <Link to="/login">ログイン</Link>
-          <Link to="/apply" className="story-nav-cta">
+          <Link to="/apply" className="site-nav-cta">
             申し込む
           </Link>
         </nav>
       </header>
 
-      <section className="story-panel story-hero">
-        <div className="story-copy">
-          <p className="story-brand">よやく台帳</p>
-          <h1>電話の予約を、台帳にそのまま。</h1>
-          <p className="story-lead">
-            AIが受けた予約が、店舗の台帳へ載る。紙と電話のあいだを、ひとつなぎに。
+      <section className="site-hero">
+        <div className="site-hero-copy">
+          <p className="site-eyebrow">飲食店向け · AI電話予約</p>
+          <h1 className="site-brand">よやく台帳</h1>
+          <p className="site-headline">電話の予約を、台帳にそのまま。</p>
+          <p className="site-lead">
+            ピーク時の着信をAIが受け、人数・時間・お名前を台帳の一行に載せます。紙と電話のあいだを、ひとつなぎに。
           </p>
-          <div className="story-actions">
+          <div className="site-actions">
             <Link to="/apply" className="btn btn-primary">
-              店舗を申し込む
+              無料で申し込む
             </Link>
-            <Link to="/login" className="btn btn-ghost">
-              ログイン
-            </Link>
+            <a href="#product" className="btn btn-ghost">
+              画面を見る
+            </a>
           </div>
         </div>
       </section>
 
-      <section className="story-panel story-panel-quiet">
-        <div className="story-copy story-copy-narrow">
-          <h2>着信の内容が、今日の一行になる</h2>
-          <p className="story-lead">
-            人数、時間、お名前。会話のまま予約情報へ。取りこぼしを、台帳側で防ぐ。
+      <section className="site-band" id="problem">
+        <div className="site-band-inner">
+          <h2>電話対応で、接客が止まる</h2>
+          <p className="site-lead">
+            紙やExcelの台帳だと、聞き間違い・二重予約・引き継ぎ漏れが起きやすい。よやく台帳は着信内容をその場で一覧に残します。
+          </p>
+          <ul className="site-pains">
+            <li>ピークの電話対応でホールが手薄になる</li>
+            <li>紙台帳の転記ミス・読み違い</li>
+            <li>電話予約と手入力が別管理になる</li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="site-product" id="product">
+        <div className="site-product-copy">
+          <h2>開いた瞬間、今夜の席がわかる</h2>
+          <p className="site-lead">
+            電話予約も手入力も同じ一覧。時刻が大きく、人数が丸く、名前が太い。現場が迷わない見え方にしています。
           </p>
         </div>
+        <LedgerProof />
       </section>
 
-      <section className="story-panel story-panel-proof">
-        <div className="story-proof-grid">
-          <div className="story-copy story-copy-narrow">
-            <h2>開いた瞬間、今夜の席がわかる</h2>
-            <p className="story-lead">
-              電話予約も手入力も、同じ一覧に並ぶ。時刻が大きく、人数が丸く、名前が太い。
-            </p>
-          </div>
-          <LedgerProof />
-        </div>
-      </section>
-
-      <section className="story-panel story-end">
-        <div className="story-copy story-copy-center">
-          <h2>店の準備ができたら、申し込む</h2>
-          <p className="story-lead">
-            運営者が内容を確認し、アカウントを発行します。承認後すぐに台帳を使えます。
-          </p>
-          <div className="story-actions story-actions-center">
-            <Link to="/apply" className="btn btn-primary">
-              利用を申し込む
-            </Link>
+      <section className="site-flow">
+        <div className="site-flow-inner">
+          <h2>申し込みから利用まで</h2>
+          <p className="site-lead">運営者の承認制です。内容を確認してからアカウントを発行します。</p>
+          <div className="site-flow-steps">
+            <div>
+              <strong>申し込む</strong>
+              <span>店舗名と連絡先を送る</span>
+            </div>
+            <div>
+              <strong>承認</strong>
+              <span>運営者が内容を確認</span>
+            </div>
+            <div>
+              <strong>ログイン</strong>
+              <span>台帳をすぐ使える</span>
+            </div>
           </div>
         </div>
       </section>
 
-      <footer className="story-footer">
+      <section className="site-cta">
+        <h2>まずは店舗を申し込む</h2>
+        <p className="site-lead">承認後、登録メールでログインできます。</p>
+        <Link to="/apply" className="btn btn-primary">
+          申し込みフォームへ
+        </Link>
+      </section>
+
+      <footer className="site-footer">
         <span>よやく台帳</span>
-        <div className="story-footer-links">
+        <div className="site-footer-links">
           <Link to="/login">店舗ログイン</Link>
           <Link to="/operator/login">運営</Link>
         </div>

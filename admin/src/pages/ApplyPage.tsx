@@ -1,10 +1,8 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { createApplication } from '../api'
-import { ScrollStage } from '../scroll/ScrollStage'
 
 export function ApplyPage() {
-  const rootRef = useRef<HTMLDivElement>(null)
   const [storeName, setStoreName] = useState('')
   const [contactName, setContactName] = useState('')
   const [contactEmail, setContactEmail] = useState('')
@@ -42,39 +40,42 @@ export function ApplyPage() {
   }
 
   return (
-    <div className="story story-apply" ref={rootRef}>
-      <ScrollStage scrollerRoot={rootRef} mode="ambient" className="story-stage story-stage-ambient" />
-
-      <header className="story-top">
-        <Link to="/" className="story-logo">
+    <div className="apply-site">
+      <header className="apply-top">
+        <Link to="/" className="site-logo is-dark">
           よやく台帳
         </Link>
-        <nav className="story-nav">
-          <Link to="/">戻る</Link>
-          <Link to="/login">ログイン</Link>
-        </nav>
+        <Link to="/login" className="apply-login">
+          ログイン
+        </Link>
       </header>
 
-      <main className="apply-layout">
-        <aside className="apply-aside">
-          <p className="story-brand apply-brand">よやく台帳</p>
-          <h1>店舗の申し込み</h1>
-          <p className="story-lead">
-            送信後、運営者が確認します。承認されると、登録メールでログインできます。
+      <main className="apply-shell">
+        <aside className="apply-side">
+          <p className="site-eyebrow">店舗申し込み</p>
+          <h1>よやく台帳を使い始める</h1>
+          <p>
+            送信内容を運営者が確認し、問題なければアカウントを発行します。承認後、登録メールでログインできます。
           </p>
+          <ul>
+            <li>初期設定の台帳・席・営業時間が入ります</li>
+            <li>電話予約と手入力を同じ一覧で管理</li>
+            <li>承認制なので、店舗情報の確認後に開始</li>
+          </ul>
         </aside>
 
         {doneId ? (
-          <div className="apply-form" role="status">
+          <div className="apply-card" role="status">
             <h2>受け付けました</h2>
-            <p className="story-lead">承認後にメールアドレスでログインできます。</p>
+            <p>承認後、メールアドレスでログインできます。</p>
             <p className="muted-note">受付番号: {doneId}</p>
             <Link to="/" className="btn btn-primary">
               トップへ
             </Link>
           </div>
         ) : (
-          <form className="apply-form" onSubmit={onSubmit}>
+          <form className="apply-card" onSubmit={onSubmit}>
+            <h2>必要事項</h2>
             {error ? <div className="alert alert-error">{error}</div> : null}
 
             <div className="field">
