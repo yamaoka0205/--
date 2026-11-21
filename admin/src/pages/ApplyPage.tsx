@@ -40,19 +40,21 @@ export function ApplyPage() {
   }
 
   return (
-    <div className="signup">
-      <header className="signup-header">
-        <Link to="/" className="lp-logo">
-          よやく台帳
-        </Link>
-        <Link to="/login" className="signup-login">
-          すでにアカウントをお持ちの方はログイン
-        </Link>
+    <div className="mk-apply">
+      <header className="mk-header">
+        <div className="mk-header-inner">
+          <Link to="/" className="mk-logo">
+            よやく台帳
+          </Link>
+          <Link to="/login" className="mk-apply-login">
+            すでにアカウントをお持ちの方はログイン
+          </Link>
+        </div>
       </header>
 
-      <main className="signup-main">
-        <div className="signup-intro">
-          <p className="lp-kicker">店舗申し込み</p>
+      <main className="mk-apply-main">
+        <div className="mk-apply-intro">
+          <p className="mk-badge">店舗申し込み</p>
           <h1>よやく台帳を無料で申し込む</h1>
           <p>
             送信内容を運営者が確認し、問題なければアカウントを発行します。承認後、登録メールでログインできます。
@@ -65,16 +67,16 @@ export function ApplyPage() {
         </div>
 
         {doneId ? (
-          <div className="signup-card" role="status">
+          <div className="mk-form-card" role="status">
             <h2>受け付けました</h2>
             <p>承認後、メールアドレスでログインできます。</p>
-            <p className="muted-note">受付番号: {doneId}</p>
-            <Link to="/" className="btn btn-primary" style={{ width: '100%' }}>
+            <p className="mk-muted">受付番号: {doneId}</p>
+            <Link to="/" className="mk-btn mk-btn-primary" style={{ width: '100%' }}>
               トップへ戻る
             </Link>
           </div>
         ) : (
-          <form className="signup-card" onSubmit={onSubmit}>
+          <form className="mk-form-card" onSubmit={onSubmit}>
             <h2>必要事項の入力</h2>
             {error ? <div className="alert alert-error">{error}</div> : null}
 
@@ -128,10 +130,10 @@ export function ApplyPage() {
               />
             </div>
 
-            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={submitting}>
+            <button type="submit" className="mk-btn mk-btn-primary" style={{ width: '100%' }} disabled={submitting}>
               {submitting ? '送信中…' : '申し込む'}
             </button>
-            <p className="signup-note">送信後、運営者の承認をお待ちください。自動課金はありません。</p>
+            <p className="mk-form-note">送信後、運営者の承認をお待ちください。自動課金はありません。</p>
           </form>
         )}
       </main>
