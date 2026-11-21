@@ -100,6 +100,7 @@ export function LandingPage() {
           <nav className="mk-nav">
             <a href="#problems">解決する課題</a>
             <a href="#features">機能</a>
+            <a href="#pricing">料金</a>
             <a href="#flow">導入の流れ</a>
             <a href="#faq">よくある質問</a>
             <Link to="/login">ログイン</Link>
@@ -130,7 +131,7 @@ export function LandingPage() {
                 機能を見る
               </a>
             </div>
-            <p className="mk-hero-note">初期費用なし · クレジットカード登録不要 · 運営者承認後に利用開始</p>
+            <p className="mk-hero-note">初期費用なし · 申し込み時カード登録不要 · 基本料3,000円／月 + 通話50円／分</p>
           </div>
           <div className="mk-hero-visual">
             <div className="mk-device is-hero">
@@ -203,7 +204,45 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="mk-section" id="flow">
+      <section className="mk-section" id="pricing">
+        <div className="mk-wrap">
+          <h2 className="mk-h2">料金</h2>
+          <p className="mk-section-lead">
+            台帳利用の基本料に加え、電話応対の通話時間だけ従量課金します。初期費用はありません。
+          </p>
+          <div className="mk-price-grid">
+            <article className="mk-price">
+              <p className="mk-price-label">基本利用料</p>
+              <p className="mk-price-amount">
+                <strong>3,000</strong>
+                <span>円／月（税別）</span>
+              </p>
+              <ul>
+                <li>予約台帳・手入力予約</li>
+                <li>店舗設定（席・営業時間）</li>
+                <li>電話予約の一覧表示</li>
+              </ul>
+            </article>
+            <article className="mk-price is-accent">
+              <p className="mk-price-label">通話課金</p>
+              <p className="mk-price-amount">
+                <strong>50</strong>
+                <span>円／分（税別）</span>
+              </p>
+              <ul>
+                <li>AI電話応対の通話時間</li>
+                <li>1分未満は1分として計算</li>
+                <li>通話のない月は発生しません</li>
+              </ul>
+            </article>
+          </div>
+          <p className="mk-price-note">
+            例）月の通話が合計40分の場合：基本料3,000円 + 通話2,000円 = 5,000円（税別）
+          </p>
+        </div>
+      </section>
+
+      <section className="mk-section mk-section-alt" id="flow">
         <div className="mk-wrap">
           <h2 className="mk-h2">導入までのステップ</h2>
           <ol className="mk-steps">
@@ -226,7 +265,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="mk-section mk-section-alt" id="faq">
+      <section className="mk-section" id="faq">
         <div className="mk-wrap mk-faq-wrap">
           <h2 className="mk-h2">よくある質問</h2>
           <details className="mk-faq" open>
@@ -234,8 +273,14 @@ export function LandingPage() {
             <p>運営者の承認後、登録メールでログインできます。承認は内容確認後に行います。</p>
           </details>
           <details className="mk-faq">
-            <summary>クレジットカードは必要ですか？</summary>
-            <p>不要です。申し込み時に決済情報の登録はありません。自動課金もありません。</p>
+            <summary>料金はどうなりますか？</summary>
+            <p>
+              基本利用料3,000円／月（税別）に加え、電話応対の通話は50円／分（税別）です。初期費用はありません。
+            </p>
+          </details>
+          <details className="mk-faq">
+            <summary>申し込み時にクレジットカードは必要ですか？</summary>
+            <p>不要です。カード登録なしで申し込めます。請求方法は利用開始時にご案内します。</p>
           </details>
           <details className="mk-faq">
             <summary>電話予約と手入力は別画面ですか？</summary>

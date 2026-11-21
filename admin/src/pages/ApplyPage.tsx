@@ -60,9 +60,9 @@ export function ApplyPage() {
             送信内容を運営者が確認し、問題なければアカウントを発行します。承認後、登録メールでログインできます。
           </p>
           <ul>
-            <li>クレジットカード登録は不要</li>
-            <li>初期設定の台帳・席・営業時間が入ります</li>
-            <li>電話予約と手入力を同じ一覧で管理</li>
+            <li>基本利用料 3,000円／月（税別）</li>
+            <li>通話課金 50円／分（税別）</li>
+            <li>申し込み時のカード登録は不要</li>
           </ul>
         </div>
 
@@ -133,7 +133,9 @@ export function ApplyPage() {
             <button type="submit" className="mk-btn mk-btn-primary" style={{ width: '100%' }} disabled={submitting}>
               {submitting ? '送信中…' : '申し込む'}
             </button>
-            <p className="mk-form-note">送信後、運営者の承認をお待ちください。自動課金はありません。</p>
+            <p className="mk-form-note">
+              送信後、運営者の承認をお待ちください。料金は基本料3,000円／月＋通話50円／分（税別）です。
+            </p>
           </form>
         )}
       </main>
