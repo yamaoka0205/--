@@ -195,16 +195,17 @@ export function ScrollHeroCanvas({ scrollerRoot, mode = 'story' }: Props) {
         ? THREE.MathUtils.lerp(0.05, 0.1, p)
         : THREE.MathUtils.lerp(1.05, 1.25, p)
       hero.position.y = (isMobile ? -0.65 : 0.05) + Math.sin(t * 0.5) * 0.035
-      hero.scale.setScalar((isMobile ? 0.72 : 0.88) + slabPhase * 0.22)
-      ;(slab.material as THREE.MeshStandardMaterial).opacity = 0.35 + slabPhase * 0.65
+      hero.scale.setScalar((isMobile ? 0.78 : 0.94) + slabPhase * 0.18)
+      // 最初から台帳は見える（有名Three.js同様、主役は常に存在）
+      ;(slab.material as THREE.MeshStandardMaterial).opacity = 0.82 + slabPhase * 0.18
       ;(slab.material as THREE.MeshStandardMaterial).transparent = true
-      ;(edge.material as THREE.MeshStandardMaterial).opacity = 0.25 + slabPhase * 0.7
+      ;(edge.material as THREE.MeshStandardMaterial).opacity = 0.7 + slabPhase * 0.3
       ;(edge.material as THREE.MeshStandardMaterial).transparent = true
       rows.forEach((row, i) => {
         const mat = row.material as THREE.MeshStandardMaterial
         mat.transparent = true
-        mat.opacity = THREE.MathUtils.clamp(slabPhase * 1.35 - i * 0.1, 0, 1)
-        row.position.z = 0.055 + (1 - mat.opacity) * -0.18
+        mat.opacity = THREE.MathUtils.clamp(0.35 + slabPhase * 0.85 - i * 0.08, 0, 1)
+        row.position.z = 0.055 + (1 - mat.opacity) * -0.12
       })
 
       camera.position.z = THREE.MathUtils.lerp(5.3, 4.6, p)
