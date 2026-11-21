@@ -50,30 +50,31 @@ export function ApplyPage() {
           よやく台帳
         </Link>
         <nav className="story-nav">
-          <Link to="/">紹介</Link>
-          <Link to="/login">店舗ログイン</Link>
+          <Link to="/">戻る</Link>
+          <Link to="/login">ログイン</Link>
         </nav>
       </header>
 
-      <main className="apply-main">
+      <main className="apply-layout">
+        <aside className="apply-aside">
+          <p className="story-brand apply-brand">よやく台帳</p>
+          <h1>店舗の申し込み</h1>
+          <p className="story-lead">
+            送信後、運営者が確認します。承認されると、登録メールでログインできます。
+          </p>
+        </aside>
+
         {doneId ? (
           <div className="apply-form" role="status">
-            <p className="story-kicker">申し込み完了</p>
-            <h1>受け付けました</h1>
-            <p className="story-lead">
-              運営者の承認後、ご登録のメールアドレスでログインできるようになります。
-            </p>
+            <h2>受け付けました</h2>
+            <p className="story-lead">承認後にメールアドレスでログインできます。</p>
             <p className="muted-note">受付番号: {doneId}</p>
             <Link to="/" className="btn btn-primary">
-              トップへ戻る
+              トップへ
             </Link>
           </div>
         ) : (
           <form className="apply-form" onSubmit={onSubmit}>
-            <p className="story-kicker">店舗申し込み</p>
-            <h1>よやく台帳を、店で使う</h1>
-            <p className="story-lead">内容を確認したうえで、運営者がアカウントを発行します。</p>
-
             {error ? <div className="alert alert-error">{error}</div> : null}
 
             <div className="field">
@@ -83,7 +84,7 @@ export function ApplyPage() {
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
                 required
-                placeholder="例：食堂さくら"
+                placeholder="食堂さくら"
               />
             </div>
             <div className="field">
@@ -122,7 +123,7 @@ export function ApplyPage() {
                 rows={3}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="席数や営業時間など、伝えたいことがあれば"
+                placeholder="席数、営業時間など"
               />
             </div>
 
