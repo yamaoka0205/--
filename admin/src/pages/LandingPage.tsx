@@ -1,38 +1,88 @@
 import { Link } from 'react-router-dom'
 
+/** 本番台帳（LedgerPage）に寄せた画面モック */
 function LedgerScreen() {
   return (
-    <div className="device-screen" aria-hidden>
-      <div className="device-bar">
-        <span />
-        <span />
-        <span />
-        <em>今日の予約 · デモ食堂さくら</em>
+    <div className="mk-app" aria-hidden>
+      <div className="mk-app-top">
+        <div>
+          <strong>今日の予約</strong>
+          <span className="mk-app-store">デモ食堂さくら</span>
+        </div>
+        <span className="mk-app-add">＋ 予約を入れる</span>
       </div>
-      <div className="device-rows">
-        <div className="device-row">
+      <div className="mk-app-toolbar">
+        <span>‹</span>
+        <em>11月21日（金）</em>
+        <span>›</span>
+        <b>今日</b>
+      </div>
+      <div className="mk-app-summary">
+        <div>
+          <small>予約</small>
+          <strong>
+            4<span>組</span>
+          </strong>
+        </div>
+        <div>
+          <small>人数合計</small>
+          <strong>
+            15<span>名</span>
+          </strong>
+        </div>
+        <div>
+          <small>利用時間</small>
+          <strong>90分</strong>
+        </div>
+      </div>
+      <div className="mk-app-list">
+        <div className="mk-app-row">
           <time>18:00</time>
           <b>4</b>
-          <span>田中 様</span>
-          <i>店内</i>
+          <div>
+            <strong>田中 様</strong>
+            <p>
+              <span>18:00〜19:30</span>
+              <span>卓A</span>
+              <i className="is-manual">手入力</i>
+            </p>
+          </div>
         </div>
-        <div className="device-row is-ai">
+        <div className="mk-app-row">
           <time>18:30</time>
           <b>2</b>
-          <span>電話 · 山田</span>
-          <i>AI</i>
+          <div>
+            <strong>山田 様</strong>
+            <p>
+              <span>18:30〜20:00</span>
+              <span>卓B</span>
+              <i className="is-phone">電話</i>
+            </p>
+          </div>
         </div>
-        <div className="device-row">
+        <div className="mk-app-row">
           <time>19:00</time>
           <b>3</b>
-          <span>鈴木 様</span>
-          <i>店内</i>
+          <div>
+            <strong>鈴木 様</strong>
+            <p>
+              <span>19:00〜20:30</span>
+              <span>卓C</span>
+              <i className="is-manual">手入力</i>
+            </p>
+          </div>
         </div>
-        <div className="device-row">
+        <div className="mk-app-row">
           <time>19:45</time>
           <b>6</b>
-          <span>宴会 · 佐藤</span>
-          <i>店内</i>
+          <div>
+            <strong>佐藤 様</strong>
+            <p>
+              <span>19:45〜21:15</span>
+              <span>卓D</span>
+              <i className="is-manual">手入力</i>
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -63,14 +113,14 @@ export function LandingPage() {
       <section className="mk-hero">
         <div className="mk-hero-inner">
           <div className="mk-hero-copy">
-            <p className="mk-badge">飲食店向け予約・電話管理</p>
+            <p className="mk-badge">飲食店向け予約管理</p>
             <h1>
               電話の予約を、
               <br />
               台帳にそのまま。
             </h1>
             <p className="mk-hero-lead">
-              ピーク時の着信をAIが受け、人数・時間・お名前を台帳の一行に載せます。紙と電話のあいだを、ひとつなぎに。
+              ピークの着信も、人数・時間・お名前を台帳の一行に残せます。紙と電話のあいだを、ひとつなぎに。
             </p>
             <div className="mk-hero-actions">
               <Link to="/apply" className="mk-btn mk-btn-primary">
@@ -83,7 +133,6 @@ export function LandingPage() {
             <p className="mk-hero-note">初期費用なし · クレジットカード登録不要 · 運営者承認後に利用開始</p>
           </div>
           <div className="mk-hero-visual">
-            <img className="mk-hero-photo" src="/media/dining.jpg" alt="" />
             <div className="mk-device is-hero">
               <LedgerScreen />
             </div>
@@ -101,7 +150,7 @@ export function LandingPage() {
           <div className="mk-pain-grid">
             <article className="mk-pain">
               <p className="mk-pain-q">ピークの電話対応で、ホールが手薄になる</p>
-              <p className="mk-pain-a">AIが着信を受け、台帳へ自動で残します</p>
+              <p className="mk-pain-a">電話予約も台帳へそのまま残せます</p>
             </article>
             <article className="mk-pain">
               <p className="mk-pain-q">紙・Excelの転記ミスや読み違いが起きる</p>
@@ -123,11 +172,11 @@ export function LandingPage() {
             <div className="mk-feature-copy">
               <h3>直感的でシンプルな予約一覧</h3>
               <p>
-                画面に従ってタッチするだけで、誰でもかんたんに予約を確認・追加できます。AI電話で入った予約も、同じ一覧に並びます。
+                画面に従って操作するだけで、誰でもかんたんに予約を確認・追加できます。電話で入った予約も、同じ一覧に並びます。
               </p>
               <ul>
                 <li>今日の予約を大きく表示</li>
-                <li>電話予約はAIラベルで判別</li>
+                <li>電話／手入力をバッジで判別</li>
                 <li>人数・時刻・名前が一目でわかる</li>
               </ul>
             </div>
@@ -139,10 +188,10 @@ export function LandingPage() {
             <div className="mk-feature-copy">
               <h3>電話対応の負荷を下げる</h3>
               <p>
-                ピーク時でも着信内容を聞き逃さず、台帳へ残します。ホール接客に集中できる時間をつくります。
+                ピーク時でも着信内容を聞き逃さず、台帳へ残せます。ホール接客に集中できる時間をつくります。
               </p>
               <ul>
-                <li>AIによる電話予約の取り込み</li>
+                <li>電話予約の取り込み</li>
                 <li>転記作業の削減</li>
                 <li>二重予約リスクの低減</li>
               </ul>
@@ -190,7 +239,7 @@ export function LandingPage() {
           </details>
           <details className="mk-faq">
             <summary>電話予約と手入力は別画面ですか？</summary>
-            <p>同じ台帳一覧に並びます。電話経由はAIラベルで判別できます。</p>
+            <p>同じ台帳一覧に並びます。電話経由は「電話」バッジで判別できます。</p>
           </details>
           <details className="mk-faq">
             <summary>初期設定は必要ですか？</summary>
@@ -202,7 +251,7 @@ export function LandingPage() {
       <section className="mk-cta-band">
         <div className="mk-wrap mk-cta-inner">
           <h2>まずは店舗を申し込む</h2>
-          <p>承認後、登録メールでログインできます。資料請求ではなく、そのまま申し込みフォームへ進めます。</p>
+          <p>承認後、登録メールでログインできます。</p>
           <Link to="/apply" className="mk-btn mk-btn-primary">
             無料で申し込む
           </Link>
