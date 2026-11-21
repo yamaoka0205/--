@@ -1,152 +1,154 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-
-function LedgerMock({ className = '' }: { className?: string }) {
-  return (
-    <div className={`ledger-mock ${className}`} aria-hidden>
-      <div className="ledger-mock-chrome">
-        <span />
-        <span />
-        <span />
-        <em>今日の予約 · デモ食堂さくら</em>
-      </div>
-      <div className="ledger-mock-rows">
-        <div className="ledger-mock-row">
-          <time>18:00</time>
-          <b>4</b>
-          <span>田中 様</span>
-          <i>店内</i>
-        </div>
-        <div className="ledger-mock-row is-phone">
-          <time>18:30</time>
-          <b>2</b>
-          <span>電話 · 山田</span>
-          <i>AI</i>
-        </div>
-        <div className="ledger-mock-row">
-          <time>19:00</time>
-          <b>3</b>
-          <span>鈴木 様</span>
-          <i>店内</i>
-        </div>
-        <div className="ledger-mock-row">
-          <time>19:45</time>
-          <b>6</b>
-          <span>宴会 · 佐藤</span>
-          <i>店内</i>
-        </div>
-      </div>
-    </div>
-  )
-}
+import { ScrollStage } from '../scroll/ScrollStage'
 
 export function LandingPage() {
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onScroll = () => {
+      document.querySelector('.sx-nav')?.classList.toggle('is-scrolled', window.scrollY > 40)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   return (
-    <div className="lp">
-      <header className="lp-header">
-        <div className="lp-header-inner">
-          <Link to="/" className="lp-logo">
-            よやく台帳
+    <div className="sx" ref={rootRef}>
+      <ScrollStage scrollerRoot={rootRef} />
+
+      <header className="sx-nav">
+        <Link to="/" className="sx-brand">
+          よやく台帳
+        </Link>
+        <nav className="sx-links">
+          <a href="#vision">構想</a>
+          <a href="#features">特長</a>
+          <a href="#flow">流れ</a>
+          <Link to="/login">ログイン</Link>
+          <Link to="/apply" className="sx-pill">
+            無料で申し込む
           </Link>
-          <nav className="lp-nav">
-            <a href="#features">特長</a>
-            <a href="#flow">申し込みの流れ</a>
-            <Link to="/login">ログイン</Link>
-            <Link to="/apply" className="lp-nav-cta">
-              無料で申し込む
-            </Link>
-          </nav>
-        </div>
+        </nav>
       </header>
 
-      <section className="lp-hero">
-        <div className="lp-hero-inner">
-          <div className="lp-hero-copy">
-            <p className="lp-kicker">飲食店向け · AI電話予約</p>
-            <h1 className="lp-brand">よやく台帳</h1>
-            <p className="lp-catch">電話の予約を、台帳にそのまま。</p>
-            <p className="lp-desc">
-              ピーク時の着信をAIが受け、人数・時間・お名前を台帳の一行に載せます。紙と電話のあいだを、ひとつなぎに。
+      <main className="sx-content">
+        <section className="sx-hero">
+          <div className="sx-hero-inner" data-reveal>
+            <p className="sx-eyebrow">飲食店向け · AI電話予約</p>
+            <h1>
+              電話の嵐を、<br />
+              <em>台帳</em>に。
+            </h1>
+            <p className="sx-lead">
+              ピーク時の着信をAIが受け、人数・時間・お名前を一行に載せる。散らばる予約を、今夜の席の形に。
             </p>
-            <div className="lp-hero-actions">
-              <Link to="/apply" className="btn btn-primary btn-lg">
-                無料で申し込む
-              </Link>
-              <a href="#features" className="btn btn-ghost btn-lg">
-                特長を見る
-              </a>
-            </div>
-            <ul className="lp-trust">
-              <li>初期費用なし</li>
-              <li>運営者承認後に利用開始</li>
-              <li>電話予約と手入力を同一一覧</li>
-            </ul>
+            <dl className="sx-status">
+              <div>
+                <dt>STATUS</dt>
+                <dd>受付中</dd>
+              </div>
+              <div>
+                <dt>CHANNEL</dt>
+                <dd>
+                  電話 + 店内
+                </dd>
+              </div>
+              <div>
+                <dt>LEDGER</dt>
+                <dd>同一一覧</dd>
+              </div>
+              <div>
+                <dt>SETUP</dt>
+                <dd>承認制</dd>
+              </div>
+            </dl>
           </div>
-          <div className="lp-hero-visual">
-            <LedgerMock className="is-hero" />
-          </div>
-        </div>
-      </section>
+          <p className="sx-scroll-cue" aria-hidden>
+            SCROLL — 嵐を整える
+          </p>
+        </section>
 
-      <section className="lp-section" id="features">
-        <div className="lp-section-inner">
-          <header className="lp-section-head">
-            <h2>現場が迷わない、今夜の台帳</h2>
-            <p>時刻が大きく、人数が丸く、名前が太い。電話予約も手入力も同じ一覧です。</p>
-          </header>
-          <div className="lp-feature-grid">
-            <article>
-              <h3>ピークの電話対応をAIが受ける</h3>
-              <p>ホールが手薄な時間帯でも、人数・時間・名前を聞き取り、台帳へ自動で残します。</p>
+        <section className="sx-vision" id="vision">
+          <p className="sx-line" data-reveal>
+            予約は、メモするものではなく、
+          </p>
+          <p className="sx-line" data-reveal>
+            <span className="sx-accent">つなぐ</span>ものだ。
+          </p>
+          <p className="sx-line sx-line-small" data-reveal>
+            — 電話と紙のあいだに、一本の台帳をひく。
+          </p>
+        </section>
+
+        <section className="sx-section" id="features">
+          <div className="sx-sec-head" data-reveal>
+            <p className="sx-eyebrow">FEATURES</p>
+            <h2>三段で、今夜を整流する</h2>
+            <p className="sx-sec-lead">受けて、載せて、見える。順番を守るだけで、ピークの混乱は目に見えて下がります。</p>
+          </div>
+          <div className="sx-cards">
+            <article className="sx-card" data-reveal>
+              <p className="sx-num">01 — RECEIVE</p>
+              <h3>
+                受信<small>ピークの電話を</small>
+              </h3>
+              <p>ホールが手薄な時間帯でも、AIが人数・時間・名前を聞き取ります。</p>
             </article>
-            <article>
-              <h3>紙・Excelの転記ミスを減らす</h3>
-              <p>聞き間違いや二重予約の温床になる手書き転記をやめ、一覧で確認できる形にします。</p>
+            <article className="sx-card" data-reveal>
+              <p className="sx-num">02 — LEDGER</p>
+              <h3>
+                台帳<small>一行に載せる</small>
+              </h3>
+              <p>電話予約も手入力も同じ一覧。転記ミスと二重予約の温床を減らします。</p>
             </article>
-            <article>
-              <h3>開いた瞬間、今夜の席がわかる</h3>
-              <p>店内予約も電話予約も同じ画面。引き継ぎやシフト交代でも迷いません。</p>
+            <article className="sx-card" data-reveal>
+              <p className="sx-num">03 — TONIGHT</p>
+              <h3>
+                今夜<small>席が見える</small>
+              </h3>
+              <p>時刻が大きく、人数が丸く、名前が太い。開いた瞬間、今夜がわかります。</p>
             </article>
           </div>
-          <LedgerMock className="is-section" />
-        </div>
-      </section>
+        </section>
 
-      <section className="lp-section lp-section-alt" id="flow">
-        <div className="lp-section-inner">
-          <header className="lp-section-head">
+        <section className="sx-section sx-flow" id="flow">
+          <div className="sx-sec-head" data-reveal>
+            <p className="sx-eyebrow">START</p>
             <h2>申し込みから利用まで</h2>
-            <p>freeeやマネーフォワードと同様、フォーム送信 → 確認 → 利用開始の流れです。</p>
-          </header>
-          <ol className="lp-steps">
-            <li>
+            <p className="sx-sec-lead">クレジットカード登録は不要。運営者承認後にログインできます。</p>
+          </div>
+          <ol className="sx-steps">
+            <li data-reveal>
               <strong>1. 申し込む</strong>
               <span>店舗名・担当者・メールを送信</span>
             </li>
-            <li>
+            <li data-reveal>
               <strong>2. 承認</strong>
               <span>運営者が内容を確認</span>
             </li>
-            <li>
+            <li data-reveal>
               <strong>3. ログイン</strong>
               <span>登録メールで台帳を利用開始</span>
             </li>
           </ol>
-        </div>
-      </section>
+        </section>
 
-      <section className="lp-cta-band">
-        <div className="lp-cta-inner">
-          <h2>まずは店舗を申し込む</h2>
-          <p>承認後、登録メールでログインできます。クレジットカード登録は不要です。</p>
-          <Link to="/apply" className="btn btn-primary btn-lg">
-            無料で申し込む
-          </Link>
-        </div>
-      </section>
+        <section className="sx-cta" id="cta">
+          <div data-reveal>
+            <h2>まずは店舗を申し込む</h2>
+            <p>承認後、登録メールでログイン。自動課金はありません。</p>
+            <Link to="/apply" className="sx-pill sx-pill-lg">
+              無料で申し込む
+            </Link>
+          </div>
+        </section>
+      </main>
 
-      <footer className="lp-footer">
+      <footer className="sx-foot">
         <span>よやく台帳</span>
-        <div className="lp-footer-links">
+        <div>
           <Link to="/login">店舗ログイン</Link>
           <Link to="/operator/login">運営</Link>
         </div>
